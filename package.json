@@ -39,6 +39,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://pc:8080",
+  "proxy": "http://txmempool1:8080",
   "devDependencies": {}
 }

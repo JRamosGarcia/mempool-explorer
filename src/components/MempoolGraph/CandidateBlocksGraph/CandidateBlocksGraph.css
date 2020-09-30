@@ -1,0 +1,21 @@
+.CandidateBlocksGraph{
+    text-align: center;
+}
+
+#candidateBlocksInfobox {
+    position: fixed;
+    z-index: 1;
+    background: lightgrey;
+    border: 1px black solid;
+    border-radius: 10px;
+  }
+  tr {
+    border: 1px gray solid;
+  }
+  td {
+    font-size: 10px;
+  }
+  td.data {
+    font-weight: 900;
+  }
+  

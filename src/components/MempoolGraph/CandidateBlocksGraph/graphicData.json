@@ -1,5 +1,4 @@
-{"numTxs": 44349,
-  "candidateBlockRecapList": [
+{"candidateBlockRecapList": [
     { "weight": 3999311, "totalFees": 62041923, "numTxs": 2597 },
     { "weight": 3999520, "totalFees": 48620803, "numTxs": 2123 },
     { "weight": 3999615, "totalFees": 45513864, "numTxs": 2745 },
@@ -27,6 +26,5 @@
     { "weight": 3999258, "totalFees": 1003014, "numTxs": 123 },
     { "weight": 3999502, "totalFees": 999934, "numTxs": 31 },
     { "weight": 3167811, "totalFees": 791991, "numTxs": 37 }
-  ],
-  "vsizeInLast10minutes": 678339
+  ]
 }

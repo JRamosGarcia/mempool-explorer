@@ -1,15 +1,11 @@
 import React from "react";
 import "./App.css";
-import { MempoolGraph } from "./components/MempoolGraph/MempoolGraph.js";
+import { MempoolGraph } from "./components/MempoolGraph/MempoolGraph";
 
 function App() {
   return (
     <div className="App">
-      <MempoolGraph verticalSize={600} barWidth={300} 
-      //by="byWeight" 
-      //by="byNumTx"
-      by="byBoth"
-      />
+      <MempoolGraph />
     </div>
   );
 }
