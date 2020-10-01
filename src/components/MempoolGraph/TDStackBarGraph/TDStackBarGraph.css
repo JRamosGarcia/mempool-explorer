@@ -1,0 +1,9 @@
+tr {
+  border: 1px gray solid;
+}
+td {
+  font-size: 10px;
+}
+td.data {
+  font-weight: 900;
+}

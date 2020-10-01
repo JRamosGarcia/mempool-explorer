@@ -3,6 +3,7 @@ import {} from "d3-transition";
 import React, { useEffect, useState } from "react";
 import { BlockGraph } from "./BlockGraph/BlockGraph";
 import { CandidateBlocksGraph } from "./CandidateBlocksGraph/CandidateBlocksGraph";
+import { HistogramGraph } from "./HistogramGraph/HistogramGraph";
 import "./MempoolGraph.css";
 
 export function MempoolGraph(props) {
@@ -10,6 +11,7 @@ export function MempoolGraph(props) {
   const [data, setData] = useState({ candidateBlockRecapList: [] });
   const [blockSelected, setBlockSelected] = useState(-1);
   const [histoElementSelected, setHistoElementSelected] = useState(-1);
+  const [txIdSelected, setTxIdSelected] = useState("");
 
   useEffect(() => {
     setLoading(false);
@@ -25,7 +27,7 @@ export function MempoolGraph(props) {
             setData(data);
           })
           .catch((error) => console.log(error));
-      } else {
+      } else if (histoElementSelected === -1) {
         json("http://localhost:3001/api/block/" + blockSelected)
           .then((data) => {
             console.log(
@@ -35,6 +37,17 @@ export function MempoolGraph(props) {
             setData(data);
           })
           .catch((error) => console.log(error));
+      } else {
+        const petition =
+          "http://localhost:3001/api/histogram/" +
+          blockSelected +
+          "/" +
+          histoElementSelected;
+        json(petition).then((data) => {
+          console.log("petition at " + petition);
+          addData(data);
+          setData(data);
+        });
       }
     }
 
@@ -43,7 +56,7 @@ export function MempoolGraph(props) {
     return function cleanup() {
       clearInterval(timerId);
     };
-  }, [isLoading, blockSelected]); //execute if any of these array elements have changed
+  }, [isLoading, blockSelected, histoElementSelected]); //execute if any of these array elements have changed
 
   function onBlockSelected(blockSelected) {
     setBlockSelected(blockSelected);
@@ -53,27 +66,41 @@ export function MempoolGraph(props) {
     setHistoElementSelected(histoElementSelected);
   }
 
+  function onTxSelected(txId) {
+    setTxIdSelected(txId);
+  }
+
   return (
-    <div className="MempoolGraph">
-      <CandidateBlocksGraph
-        verticalSize={600}
-        barWidth={300}
-        //by="byWeight"
-        //by="byNumTx"
-        by="byBoth"
-        data={data}
-        onBlockSelected={onBlockSelected}
-      />
-      <BlockGraph
-        verticalSize={600}
-        barWidth={300}
-        //by="byWeight"
-        by="byNumTx"
-        //by="byBoth"
-        data={data}
-        onSatVByteSelected={onSatVByteSelected}
-      />
-      <p>{histoElementSelected}</p>
+    <div>
+      <div className="Mempool">
+        <CandidateBlocksGraph
+          verticalSize={600}
+          barWidth={300}
+          //by="byWeight"
+          //by="byNumTx"
+          by="byBoth"
+          data={data}
+          onBlockSelected={onBlockSelected}
+        />
+        <BlockGraph
+          verticalSize={600}
+          barWidth={300}
+          //by="byWeight"
+          by="byNumTx"
+          //by="byBoth"
+          data={data}
+          onSatVByteSelected={onSatVByteSelected}
+        />
+        <HistogramGraph
+          verticalSize={600}
+          barWidth={400}
+          //by="byWeight"
+          by="byNumTx"
+          data={data}
+          onTxSelected={onTxSelected}
+        />
+      </div>
+      <p>{txIdSelected}</p>
     </div>
   );
 }
@@ -102,11 +129,12 @@ function addData(data) {
   data.maxSatVByte = maxSatVByte;
   data.numBlocks = data.candidateBlockRecapList.length;
 
-  addDataTo(data.candidateBlockHistogram);
+  addDataToCandidateBlockHistogram(data);
+  addDataToSatVByteHistogramElement(data);
 }
 
-function addDataTo(candidateBlockHistogram) {
-  if (candidateBlockHistogram != null) {
+function addDataToCandidateBlockHistogram(data) {
+  if (data.candidateBlockHistogram != null) {
     let blockTotalTxs = 0;
     let blockTotalWeight = 0;
     let blockMaxModSatVByte = 0;
@@ -114,7 +142,7 @@ function addDataTo(candidateBlockHistogram) {
     let minTxNumInHistogramElement = 99999999;
     let minWeightInHistogramElement = 99999999;
 
-    Object.values(candidateBlockHistogram).forEach((e, i, a) => {
+    Object.values(data.candidateBlockHistogram).forEach((e, i, a) => {
       blockTotalTxs += e.numTxs;
 
       blockTotalWeight += e.weight;
@@ -146,11 +174,37 @@ function addDataTo(candidateBlockHistogram) {
           ? e.weight
           : minWeightInHistogramElement;
     });
-    candidateBlockHistogram.blockTotalTxs = blockTotalTxs;
-    candidateBlockHistogram.blockTotalWeight = blockTotalWeight;
-    candidateBlockHistogram.blockMaxModSatVByte = blockMaxModSatVByte;
-    candidateBlockHistogram.blockMinModSatVByte = blockMinModSatVByte;
-    candidateBlockHistogram.minTxNumInHistogramElement = minTxNumInHistogramElement;
-    candidateBlockHistogram.minWeightInHistogramElement = minWeightInHistogramElement;
+    data.candidateBlockHistogram = { values: data.candidateBlockHistogram };
+    data.candidateBlockHistogram.blockTotalTxs = blockTotalTxs;
+    data.candidateBlockHistogram.blockTotalWeight = blockTotalWeight;
+    data.candidateBlockHistogram.blockMaxModSatVByte = blockMaxModSatVByte;
+    data.candidateBlockHistogram.blockMinModSatVByte = blockMinModSatVByte;
+    data.candidateBlockHistogram.minTxNumInHistogramElement = minTxNumInHistogramElement;
+    data.candidateBlockHistogram.minWeightInHistogramElement = minWeightInHistogramElement;
+  }
+}
+
+function addDataToSatVByteHistogramElement(data) {
+  if (data.satVByteHistogramElement != null) {
+    let histogramTotalTxs = 0;
+    let histogramTotalWeight = 0;
+    let histogramMinWeight = 99999999;
+    Object.values(data.satVByteHistogramElement).forEach((e, i, a) => {
+      histogramTotalWeight += e.w;
+      histogramTotalTxs += 1;
+      if (i === 0) {
+        e.acumWeight = 0;
+        e.acumNumTx = 0;
+      } else {
+        e.acumWeight = a[i - 1].acumWeight + a[i - 1].w;
+        e.acumNumTx = a[i - 1].acumNumTx + 1;
+      }
+      histogramMinWeight = histogramMinWeight > e.w ? e.w : histogramMinWeight;
+    });
+
+    data.satVByteHistogramElement = { values: data.satVByteHistogramElement };
+    data.satVByteHistogramElement.histogramTotalWeight = histogramTotalWeight;
+    data.satVByteHistogramElement.histogramTotalTxs = histogramTotalTxs;
+    data.satVByteHistogramElement.histogramMinWeight = histogramMinWeight;
   }
 }

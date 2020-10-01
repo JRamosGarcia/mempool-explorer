@@ -1,11 +1,11 @@
 import React from "react";
 import "./App.css";
-import { MempoolGraph } from "./components/MempoolGraph/MempoolGraph";
+import { MempoolGraph2 } from "./components/MempoolGraph/MempoolGraph2";
 
 function App() {
   return (
     <div className="App">
-      <MempoolGraph />
+      <MempoolGraph2 />
     </div>
   );
 }

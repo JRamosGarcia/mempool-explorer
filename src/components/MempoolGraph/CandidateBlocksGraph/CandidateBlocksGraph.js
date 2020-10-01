@@ -3,11 +3,16 @@ import { axisLeft, axisRight } from "d3-axis";
 //import { json } from "d3-fetch";
 import { format } from "d3-format";
 import { interpolateHcl } from "d3-interpolate";
-import { path } from "d3-path";
 import { scaleLinear } from "d3-scale";
 import { select, selectAll } from "d3-selection";
 //import { } from "d3-transition";
 import { htmlTip } from "./HtmlTip";
+import {
+  createLayout,
+  barPathFunction,
+  drawAxis,
+  drawVerticalTexts,
+} from "../Utils/Utils";
 import "./CandidateBlocksGraph.css";
 
 const fullBlockWeight = 4000000;
@@ -23,7 +28,7 @@ export const CandidateBlocksGraphProps = {
 };
 
 export function CandidateBlocksGraph(props) {
-  const layout = createLayout(props);
+  const layout = createLayout(props, "candidateBlocksGraph");
 
   //UseEffect Hook
   useEffect(() => {
@@ -48,35 +53,6 @@ export function CandidateBlocksGraph(props) {
   );
 }
 
-// Sizes of CandidateBlocksGraph
-function createLayout(props) {
-  const sizeY = props.verticalSize;
-  const graphMarginVertical = 20;
-  const vTextSize = 12;
-
-  const layout = {
-    size: { Y: sizeY },
-    graphMargin: { up: 10, down: 10, graphMarginVertical },
-    barSize: {
-      X: props.barWidth,
-      Y: sizeY - graphMarginVertical,
-    },
-    axisMargin: { left: 40, right: 40, both: 80 },
-    textMargin: { left: 15, right: 15, both: 30 },
-    vTextSize: vTextSize,
-    vTextSizeStr: vTextSize + "px",
-    rightVerticalTextCorrection: 10,
-  };
-
-  layout.graphMargin.horizontal =
-    layout.axisMargin.both +
-    layout.textMargin.both -
-    layout.rightVerticalTextCorrection;
-  layout.size.X = layout.barSize.X + layout.graphMargin.horizontal;
-
-  return layout;
-}
-
 //Function that draws candidate blocks graph using d3 library
 function dataViz(data, props, layout) {
   const svg = select("#svgCandidateBlocksGraph");
@@ -96,94 +72,10 @@ function dataViz(data, props, layout) {
 
   drawBar(graph, data, props, layout, scales);
 
-  drawAxis(graph, data, props, layout, scales);
+  const axis = axisBy(data, props, layout, scales);
+  drawAxis(graph, layout, axis);
 
   drawVerticalTexts(graph, props, layout);
-}
-
-function drawLeftVerticalText(graph, props, layout) {
-  const { textMargin, barSize, vTextSizeStr } = layout;
-
-  let lText = "Weight in Mb";
-  let vCorrection = 45;
-  if (props.by === "byNumTx") {
-    lText = "Unconfirmed Tx count";
-    vCorrection = 65;
-  }
-
-  const textWeightPos = { X: textMargin.left, Y: barSize.Y / 2 + vCorrection };
-  graph
-    .append("text")
-    .text(lText)
-    .attr("x", textWeightPos.X)
-    .attr("y", textWeightPos.Y)
-    .attr(
-      "transform",
-      "rotate(-90 " + textWeightPos.X + "," + textWeightPos.Y + ")"
-    )
-    .style("font-size", vTextSizeStr);
-}
-
-function drawRightVerticalText(graph, props, layout) {
-  if (props.by !== "byBoth") return;
-  const {
-    textMargin,
-    barSize,
-    vTextSize,
-    rightVerticalTextCorrection,
-    vTextSizeStr,
-    axisMargin,
-  } = layout;
-
-  const textNumTxPos = {
-    X:
-      axisMargin.both +
-      textMargin.both +
-      barSize.X -
-      (vTextSize + rightVerticalTextCorrection),
-    Y: barSize.Y / 2 - 60,
-  };
-  graph
-    .append("text")
-    .text("Unconfirmed Tx count")
-    .attr("x", textNumTxPos.X)
-    .attr("y", textNumTxPos.Y)
-    .attr(
-      "transform",
-      "rotate(90 " + textNumTxPos.X + "," + textNumTxPos.Y + ")"
-    )
-    .style("font-size", vTextSizeStr);
-}
-
-function drawVerticalTexts(graph, props, layout) {
-  drawLeftVerticalText(graph, props, layout);
-  drawRightVerticalText(graph, props, layout);
-}
-
-function drawAxis(graph, data, props, layout, scales) {
-  const { textMargin, axisMargin, barSize } = layout;
-  const axis = axisBy(data, props, layout, scales);
-
-  if (axis.left !== null) {
-    graph
-      .append("g")
-      .attr("id", "leftAxis")
-      .attr(
-        "transform",
-        "translate(" + (textMargin.left + axisMargin.left) + ",0)"
-      )
-      .call(axis.left);
-  }
-  if (axis.right !== null) {
-    graph
-      .append("g")
-      .attr("id", "rightAxis")
-      .attr(
-        "transform",
-        "translate(" + (textMargin.left + axisMargin.left + barSize.X) + ",0)"
-      )
-      .call(axis.right);
-  }
 }
 
 function axisBy(data, props, layout, scales) {
@@ -297,58 +189,5 @@ function drawBar(graph, data, props, layout, scales) {
         .style("left", datum.clientX + 10 + "px")
         .style("top", datum.clientY + 10 + "px");
     }
-  }
-}
-
-//Returns a path for a block, given x, y(left and right), height(left and right) and width
-//Draw a path Clockwise form upper left corner
-function pathFrom(x, yl, yr, hl, hr, w) {
-  var pathRes = path();
-  pathRes.moveTo(x, yl);
-  pathRes.lineTo(x + w, yr);
-  pathRes.lineTo(x + w, yr + hr);
-  pathRes.lineTo(x, yl + hl);
-  pathRes.closePath();
-  return pathRes.toString();
-}
-
-//Returns the function that draws the path from  data (candidateBlockRecap)
-//depending on props.by
-function barPathFunction(props, layout, scales) {
-  const { scaleWeight, scaleNumTx } = scales;
-  const { barSize } = layout;
-
-  if (props.by === "byNumTx") {
-    return (d) =>
-      pathFrom(
-        0,
-        scaleNumTx(d.acumNumTx),
-        scaleNumTx(d.acumNumTx),
-        scaleNumTx(d.numTxs),
-        scaleNumTx(d.numTxs),
-        barSize.X
-      );
-  } else if (props.by === "byWeight") {
-    return (d) =>
-      pathFrom(
-        0,
-        scaleWeight(d.acumWeight),
-        scaleWeight(d.acumWeight),
-        scaleWeight(d.weight),
-        scaleWeight(d.weight),
-        barSize.X
-      );
-  } else if (props.by === "byBoth") {
-    return (d) =>
-      pathFrom(
-        0,
-        scaleWeight(d.acumWeight),
-        scaleNumTx(d.acumNumTx),
-        scaleWeight(d.weight),
-        scaleNumTx(d.numTxs),
-        barSize.X
-      );
-  } else {
-    console.log("props.by not allowed");
   }
 }
