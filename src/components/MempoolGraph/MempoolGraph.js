@@ -4,7 +4,7 @@ import { format } from "d3-format";
 import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
 import "./MempoolGraph.css";
 
-export function MempoolGraph2(props) {
+export function MempoolGraph(props) {
   const [isLoading, setLoading] = useState(true);
   const [data, setData] = useState({ candidateBlockRecapList: [] });
   const [blockSelected, setBlockSelected] = useState(-1);
