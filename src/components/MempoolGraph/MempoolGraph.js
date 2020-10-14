@@ -2,7 +2,9 @@ import React, { useEffect, useReducer, useState } from "react";
 import { json } from "d3-fetch";
 import { format } from "d3-format";
 import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
+//import { byFrom } from "./Utils/utils";
 import "./MempoolGraph.css";
+import { ScaleCheckers } from "./ScaleCheckers/ScaleCheckers";
 
 const clone = require("rfdc")();
 
@@ -18,6 +20,10 @@ export function MempoolGraph(props) {
       txIdSelected: "",
     }
   );
+  const [mempoolBy, setMempoolBy] = useState("byBoth");
+  const [blockBy, setBlockBy] = useState("byBoth");
+  const [txsBy, setTxsBy] = useState("byBoth");
+
   const [data, setData] = useState({ mempool: [] });
   const [cache, setCache] = useState({
     blockHistogram: {},
@@ -272,10 +278,35 @@ export function MempoolGraph(props) {
     });
   }
 
+  function onTxIdTextChanged(event) {
+    setSelectionsState({ txIdSelected: event.target.value });
+    console.log(event.target.value);
+  }
+
   return (
     <div>
+      <div className="txIdSelector">
+        <label>
+          TxId:
+          <input
+            className="txIdInput"
+            type="text"
+            placeholder="Insert a TxId or choose one from mempool."
+            size="70"
+            value={selectionsState.txIdSelected}
+            onChange={onTxIdTextChanged}
+          ></input>
+        </label>
+      </div>
       <div className="Mempool">
         <div className="MiningQueueSection">
+          <ScaleCheckers
+            by={mempoolBy}
+            leftText="Weight"
+            rightText="Num Txs"
+            onChange={setMempoolBy}
+            label="Scale by:"
+          />
           <TDStackBarGraph
             data={dataForMiningQueueGraph(
               data,
@@ -284,14 +315,19 @@ export function MempoolGraph(props) {
             )}
             verticalSize={600}
             barWidth={300}
-            //by="byLeft"
-            //by="byRight"
-            by="byBoth"
+            by={mempoolBy}
           />
           <p>Current Mempool</p>
         </div>
         {selectionsState.blockSelected !== -1 && (
           <div className="CandidateBlockSection">
+            <ScaleCheckers
+              by={blockBy}
+              leftText="Weight"
+              rightText="Num Txs"
+              onChange={setBlockBy}
+              label="Scale by:"
+            />
             <TDStackBarGraph
               data={dataForBlockGraph(
                 data,
@@ -300,9 +336,7 @@ export function MempoolGraph(props) {
               )}
               verticalSize={600}
               barWidth={300}
-              //by="byLeft"
-              //by="byRight"
-              by="byBoth"
+              by={blockBy}
             />
 
             {selectionsState.blockSelected !== -1 && (
@@ -314,6 +348,13 @@ export function MempoolGraph(props) {
         )}
         {selectionsState.satVByteSelected !== -1 && (
           <div className="TxsSection">
+            <ScaleCheckers
+              by={txsBy}
+              leftText="Weight"
+              rightText="Num Txs"
+              onChange={setTxsBy}
+              label="Scale by:"
+            />
             <TDStackBarGraph
               data={dataForTxsGraph(
                 data,
@@ -322,9 +363,7 @@ export function MempoolGraph(props) {
               )}
               verticalSize={600}
               barWidth={300}
-              //by="byLeft"
-              //by="byRight"
-              by="byBoth"
+              by={txsBy}
             />
             {selectionsState.satVByteSelected !== -1 && (
               <p>SatVByte: {selectionsState.satVByteSelected}</p>

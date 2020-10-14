@@ -1,3 +1,11 @@
-.Mempool{
-    display: flex; justify-content: center
+.Mempool {
+  display: flex;
+  justify-content: center;
+}
+.txIdSelector {
+  padding: 15px;
+}
+.txIdInput {
+  text-align: center;
+  margin-left: 10px;
 }
