@@ -200,7 +200,14 @@ function dataViz(data, cValues, by, layout, scales) {
 }
 
 function drawBar(graph, data, cValues, by, layout, scales) {
-  const { id, strokeWidth, fnOnSelected, fnOnSelectedEval, fnValues } = data;
+  const {
+    id,
+    strokeWidth,
+    fnOnSelected,
+    fnOnSelectedEval,
+    fnValues,
+    selectedIndex,
+  } = data;
   const { textMargin, axisMargin } = layout;
   const { scaleColor } = scales;
 
@@ -215,7 +222,7 @@ function drawBar(graph, data, cValues, by, layout, scales) {
     .data(cValues.values)
     .enter()
     .append("path")
-    .style("fill", (e) => scaleColor(fnValues.fnCDValue(e)))
+    .style("fill", colorize) //(e) => scaleColor(fnValues.fnCDValue(e)))
     .style("stroke", "grey")
     .style("stroke-width", strokeWidth)
     .attr("d", barPathFunction(by, layout, scales, fnValues))
@@ -224,12 +231,20 @@ function drawBar(graph, data, cValues, by, layout, scales) {
     .on("mouseout", mouseOut)
     .on("mousemove", mouseMove);
 
+  function colorize(e) {
+    if (fnOnSelectedEval(e) === selectedIndex) {
+      return "DarkSlateGray";
+    } else {
+      return scaleColor(fnValues.fnCDValue(e));
+    }
+  }
+
   function elementClick(event, datum) {
     fnOnSelected(fnOnSelectedEval(datum));
   }
 
   function mouseOver(event, datum) {
-    const { htmlTip, htmlTipData } = data;
+    const { htmlTip, htmlTipData, selectedIndex } = data;
     select(this).style("fill", "grey");
 
     if (select("#Infobox" + id).empty()) {
@@ -252,8 +267,8 @@ function drawBar(graph, data, cValues, by, layout, scales) {
     }
   }
 
-  function mouseOut() {
-    select(this).style("fill", (e) => scaleColor(fnValues.fnCDValue(e)));
+  function mouseOut(event, datum) {
+    select(this).style("fill", colorize(datum)); //(e) => scaleColor(fnValues.fnCDValue(e)));
 
     const infobox = select("#Infobox" + id);
     if (!infobox.empty()) {
@@ -330,11 +345,17 @@ function axisBy(propsBy, scales, ticFormat) {
 
   const axis = { left: null, right: null };
   if (propsBy === "byRight") {
-    axis.left = axisLeft().scale(scaleRight).tickFormat(format(ticFormat.byRightAxisLeft));
+    axis.left = axisLeft()
+      .scale(scaleRight)
+      .tickFormat(format(ticFormat.byRightAxisLeft));
   } else if (propsBy === "byLeft" || propsBy === "byBoth") {
-    axis.left = axisLeft().scale(scaleLeft).tickFormat(format(ticFormat.byLeftOrBothAxisLeft));
+    axis.left = axisLeft()
+      .scale(scaleLeft)
+      .tickFormat(format(ticFormat.byLeftOrBothAxisLeft));
     if (propsBy === "byBoth") {
-      axis.right = axisRight().scale(scaleRight).tickFormat(format(ticFormat.byBothAxisRight));
+      axis.right = axisRight()
+        .scale(scaleRight)
+        .tickFormat(format(ticFormat.byBothAxisRight));
     }
   }
   return axis;

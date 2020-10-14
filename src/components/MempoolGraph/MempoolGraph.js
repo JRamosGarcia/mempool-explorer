@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { json } from "d3-fetch";
 import { format } from "d3-format";
 import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
@@ -7,18 +7,26 @@ import "./MempoolGraph.css";
 const clone = require("rfdc")();
 
 export function MempoolGraph(props) {
-  const [blockSelected, setBlockSelected] = useState(-1);
-  const [satVByteSelected, setSatVByteSelected] = useState(-1);
-  const [txIdSelected, setTxIdSelected] = useState("");
-  const [data, setData] = useState({ candidateBlockRecapList: [] });
+  //useReducer as explained in:
+  // https://stackoverflow.com/questions/53574614/multiple-calls-to-state-updater-from-usestate-in-component-causes-multiple-re-re
+  const [selectionsState, setSelectionsState] = useReducer(
+    (state, newState) => ({ ...state, ...newState }),
+    {
+      blockSelected: -1,
+      satVByteSelected: -1,
+      txIndexSelected: -1,
+      txIdSelected: "",
+    }
+  );
+  const [data, setData] = useState({ mempool: [] });
   const [cache, setCache] = useState({
-    candidateBlockHistogram: {},
-    satVByteHistogramElement: {},
+    blockHistogram: {},
+    satVByteHistogram: {},
   });
 
   //After each render, this method executes, whatever state changes
   useEffect(() => {
-    const timerId = setInterval(() => updateData(), 5000);
+    const timerId = setInterval(() => updateDataByTimer(), 5000);
     return function cleanup() {
       clearInterval(timerId);
     };
@@ -27,153 +35,163 @@ export function MempoolGraph(props) {
   useEffect(() => {
     updateData();
     // eslint-disable-next-line
-  }, [blockSelected, satVByteSelected, txIdSelected]);
+  }, [selectionsState]);
+
+  function updateDataByTimer() {
+    if (selectionsState.txIdSelected !== "") {
+      console.log(
+        "searching for changes of txId:" + selectionsState.txIdSelected
+      );
+    } else if (selectionsState.blockSelected === -1) {
+      petitionTo(
+        "http://localhost:3001/api/miningQueue/" + data.lastModTime + "/true",
+        onTimer
+      );
+    } else if (selectionsState.satVByteSelected === -1) {
+      petitionTo(
+        "http://localhost:3001/api/block/" +
+          selectionsState.blockSelected +
+          "/" +
+          data.lastModTime +
+          "/true",
+        onTimer
+      );
+    } else if (selectionsState.txIndexSelected === -1) {
+      petitionTo(
+        "http://localhost:3001/api/histogram/" +
+          selectionsState.blockSelected +
+          "/" +
+          selectionsState.satVByteSelected +
+          "/" +
+          data.lastModTime +
+          "/true",
+        onTimer
+      );
+    }
+  }
 
   function updateData() {
-    if (blockSelected === -1) {
-      if (data.candidateBlockRecapList.length === 0) {
-        //petition when first loaded
-        petitionTo(
-          "http://localhost:3001/api/miningQueue/0/false",
-          onFirstMiningQueueData
-        );
-      } else {
-        //petition when updated by timer
-        petitionTo(
-          "http://localhost:3001/api/miningQueue/" + data.lastModTime + "/true",
-          onTimer
-        );
-      }
-    } else if (satVByteSelected === -1) {
-      if (
-        data.candidateBlockHistogram.length !== 0 &&
-        data.selectedCandidateBlock === blockSelected
-      ) {
-        //petition when update by timer
+    if (selectionsState.txIdSelected !== "") {
+      console.log("selected TxId:" + selectionsState.txIdSelected);
+    } else if (selectionsState.blockSelected === -1) {
+      //petition when first loaded
+      petitionTo("http://localhost:3001/api/miningQueue/0/false", setData);
+    } else if (selectionsState.satVByteSelected === -1) {
+      //petition when first or subsequent click on block
+      if (!checkBlockCache()) {
         petitionTo(
           "http://localhost:3001/api/block/" +
-            blockSelected +
+            selectionsState.blockSelected +
             "/" +
             data.lastModTime +
-            "/true",
-          onTimer
+            "/false",
+          onChangeBlockData
         );
-      } else {
-        //petition when first or subsequent click on block
-        if (!checkBlockCache()) {
-          petitionTo(
-            "http://localhost:3001/api/block/" +
-              blockSelected +
-              "/" +
-              data.lastModTime +
-              "/false",
-            onChangeBlockData
-          );
-        }
       }
-    } else if (txIdSelected === "") {
-      if (
-        data.satVByteHistogramElement.length !== 0 &&
-        data.selectedSatVByte === satVByteSelected
-      ) {
-        //petition when update by timer
+    } else if (selectionsState.txIndexSelected === -1) {
+      //petition when first or subsequent click on block histogram
+      if (!checkHistogramCache()) {
         petitionTo(
           "http://localhost:3001/api/histogram/" +
-            blockSelected +
+            selectionsState.blockSelected +
             "/" +
-            satVByteSelected +
+            selectionsState.satVByteSelected +
             "/" +
             data.lastModTime +
-            "/true",
-          onTimer
+            "/false",
+          onChangeHistogramData
         );
-      } else {
-        //petition when first or subsequent click on block histogram
-        if (!checkHistogramCache()) {
-          petitionTo(
-            "http://localhost:3001/api/histogram/" +
-              blockSelected +
-              "/" +
-              satVByteSelected +
-              "/" +
-              data.lastModTime +
-              "/false",
-            onChangeHistogramData
-          );
-        }
       }
+    } else {
+      //petition when txIndex selected
+      petitionTo(
+        "http://localhost:3001/api/tx/" +
+          selectionsState.blockSelected +
+          "/" +
+          selectionsState.satVByteSelected +
+          "/" +
+          selectionsState.txIndexSelected +
+          "/" +
+          data.lastModTime +
+          "/false",
+        onChangeTxData
+      );
     }
   }
 
   function checkBlockCache() {
-    if (typeof cache.candidateBlockHistogram[blockSelected] !== "undefined") {
-      //data.candidateBlockHistogram = null; //Saves time cloning as it is going to be overwritten
+    if (
+      typeof cache.blockHistogram[selectionsState.blockSelected] !== "undefined"
+    ) {
       let newData = clone(data);
-      newData.candidateBlockHistogram =
-        cache.candidateBlockHistogram[blockSelected];
-      newData.selectedCandidateBlock = blockSelected;
+      newData.blockHistogram =
+        cache.blockHistogram[selectionsState.blockSelected];
+      newData.blockSelected = selectionsState.blockSelected;
       setData(newData);
-      console.log("Cache found for block: " + blockSelected);
+      console.log("Cache found for block: " + selectionsState.blockSelected);
       return true;
     }
-    console.log("Cache not found for block: " + blockSelected);
+    console.log("Cache not found for block: " + selectionsState.blockSelected);
     return false;
   }
 
-  function checkHistogramCache(){
-    if (typeof cache.satVByteHistogramElement[satVByteSelected] !== "undefined") {
-      //data.candidateBlockHistogram = null; //Saves time cloning as it is going to be overwritten
+  function checkHistogramCache() {
+    const histogramIndex = getHistogramIndex(
+      selectionsState.blockSelected,
+      selectionsState.satVByteSelected
+    );
+    if (typeof cache.satVByteHistogram[histogramIndex] !== "undefined") {
       let newData = clone(data);
-      newData.satVByteHistogramElement =
-        cache.satVByteHistogramElement[satVByteSelected];
-      newData.selectedSatVByte = satVByteSelected;
+      newData.satVByteHistogram = cache.satVByteHistogram[histogramIndex];
+      newData.satVByteSelected = selectionsState.satVByteSelected;
       setData(newData);
-      console.log("Cache found for SatVByte: " + satVByteSelected);
+      console.log("Cache found for Block-SatVByte: " + histogramIndex);
       return true;
     }
-    console.log("Cache not found for SatVByte: " + satVByteSelected);
+    console.log("Cache not found for Block-SatVByte: " + histogramIndex);
     return false;
-
   }
 
-
-  function onFirstMiningQueueData(incomingData) {
-    setData(incomingData);
+  function getHistogramIndex(blockSelected, satVByteSelected) {
+    return blockSelected + "-" + satVByteSelected;
   }
 
+  //REVISAR QUE PASA CON TANTOS CAMBIO DE ESTADO UNO DETRAS DEL OTRO.
   function onTimer(incomingData) {
     if (incomingData.lastModTime !== data.lastModTime) {
       setData(incomingData);
       const newCache = {
-        candidateBlockHistogram: {},
-        satVByteHistogramElement: {},
+        blockHistogram: {},
+        satVByteHistogram: {},
       };
 
       if (
-        incomingData.selectedCandidateBlock !== -1 &&
-        incomingData.candidateBlockHistogram.length !== 0
+        incomingData.blockSelected !== -1 &&
+        incomingData.blockHistogram.length !== 0
       ) {
-        newCache.candidateBlockHistogram[incomingData.selectedCandidateBlock] =
-          incomingData.candidateBlockHistogram;
+        newCache.blockHistogram[incomingData.blockSelected] =
+          incomingData.blockHistogram;
       }
 
       if (
-        incomingData.selectedSatVByte !== -1 &&
-        incomingData.satVByteHistogramElement.length !== 0
+        incomingData.satVByteSelected !== -1 &&
+        incomingData.satVByteHistogram.length !== 0
       ) {
-        newCache.satVByteHistogramElement[incomingData.selectedSatVByte] =
-          incomingData.satVByteHistogramElement;
+        const histogramIndex =
+          incomingData.blockSelected + "-" + incomingData.satVByteSelected;
+        newCache.satVByteHistogram[histogramIndex] =
+          incomingData.satVByteHistogram;
       }
 
       setCache(newCache);
       console.log("cache cleared");
-      //This is in case the block, satVByteSelected or tx no longer exist
-      if (incomingData.selectedCandidateBlock !== blockSelected) {
-        setBlockSelected(incomingData.selectedCandidateBlock);
-      }
-      if (incomingData.selectedSatVByte !== satVByteSelected) {
-        setSatVByteSelected(incomingData.selectedSatVByte);
-      }
+      //This is in case the block, satVByteSelected,txIndex or txId no longer exist
+      setSelectionsState({
+        blockSelected: incomingData.blockSelected,
+        satVByteSelected: incomingData.satVByteSelected,
+        txIndexSelected: incomingData.txIndexSelected,
+        txIdSelected: incomingData.txIdSelected,
+      });
     }
   }
 
@@ -181,16 +199,15 @@ export function MempoolGraph(props) {
     if (incomingData.lastModTime !== data.lastModTime) {
       onTimer(incomingData);
     } else {
-      if (incomingData.candidateBlockHistogram.length !== 0) {
-        //data.candidateBlockHistogram = null; //Saves time cloning as it is going to be overwritten
+      if (incomingData.blockHistogram.length !== 0) {
+        //data.blockHistogram = null; //Saves time cloning as it is going to be overwritten
         let newData = clone(data);
-        newData.candidateBlockHistogram = incomingData.candidateBlockHistogram;
-        newData.selectedCandidateBlock = incomingData.selectedCandidateBlock;
-        newData.selectedSatVByte = -1;
+        newData.blockHistogram = incomingData.blockHistogram;
+        newData.blockSelected = incomingData.blockSelected;
         setData(newData);
         let newCache = clone(cache);
-        newCache.candidateBlockHistogram[incomingData.selectedCandidateBlock] =
-          incomingData.candidateBlockHistogram;
+        newCache.blockHistogram[incomingData.blockSelected] =
+          incomingData.blockHistogram;
         setCache(newCache);
       }
     }
@@ -200,35 +217,59 @@ export function MempoolGraph(props) {
     if (incomingData.lastModTime !== data.lastModTime) {
       onTimer(incomingData);
     } else {
-      if (incomingData.satVByteHistogramElement.length !== 0) {
-        //data.satVByteHistogramElement = null; //Saves time cloning as it is going to be overwritten
+      if (incomingData.satVByteHistogram.length !== 0) {
         let newData = clone(data);
-        newData.satVByteHistogramElement =
-          incomingData.satVByteHistogramElement;
-        newData.selectedSatVByte = incomingData.selectedSatVByte;
+        newData.satVByteHistogram = incomingData.satVByteHistogram;
+        newData.satVByteSelected = incomingData.satVByteSelected;
         setData(newData);
         let newCache = clone(cache);
-        newCache.satVByteHistogramElement[incomingData.selectedSatVByte] =
-          incomingData.satVByteHistogramElement;
+        const histogramIndex = getHistogramIndex(
+          selectionsState.blockSelected,
+          incomingData.satVByteSelected
+        );
+        newCache.satVByteHistogram[histogramIndex] =
+          incomingData.satVByteHistogram;
         setCache(newCache);
+      }
+    }
+  }
 
+  function onChangeTxData(incomingData) {
+    if (incomingData.lastModTime !== data.lastModTime) {
+      onTimer(incomingData);
+    } else {
+      if (incomingData.txIdSelected.length !== "") {
+        let newData = clone(data);
+        newData.txIdSelected = incomingData.txIdSelected;
+        newData.txIndexSelected = incomingData.txIndexSelected;
+        setData(newData);
+        setSelectionsState({ txIdSelected: incomingData.txIdSelected });
       }
     }
   }
 
   function onBlockSelected(blockSelected) {
-    setBlockSelected(blockSelected);
-    setSatVByteSelected(-1);
-    setTxIdSelected("");
+    setSelectionsState({
+      blockSelected: blockSelected,
+      satVByteSelected: -1,
+      txIndexSelected: -1,
+      txIdSelected: "",
+    });
   }
 
   function onSatVByteSelected(satVByteSelected) {
-    setSatVByteSelected(satVByteSelected);
-    setTxIdSelected("");
+    setSelectionsState({
+      satVByteSelected: satVByteSelected,
+      txIndexSelected: -1,
+      txIdSelected: "",
+    });
   }
 
-  function onTxSelected(txId) {
-    setTxIdSelected(txId);
+  function onTxIndexSelected(txIndex) {
+    setSelectionsState({
+      txIndexSelected: txIndex,
+      txIdSelected: "",
+    });
   }
 
   return (
@@ -236,56 +277,82 @@ export function MempoolGraph(props) {
       <div className="Mempool">
         <div className="MiningQueueSection">
           <TDStackBarGraph
-            data={dataForMiningQueueGraph(data, onBlockSelected)}
+            data={dataForMiningQueueGraph(
+              data,
+              onBlockSelected,
+              selectionsState.blockSelected
+            )}
             verticalSize={600}
             barWidth={300}
             //by="byLeft"
             //by="byRight"
             by="byBoth"
           />
-          {blockSelected !== -1 && <p>Block: {blockSelected + 1}</p>}
+          <p>Current Mempool</p>
         </div>
-        {blockSelected !== -1 && (
+        {selectionsState.blockSelected !== -1 && (
           <div className="CandidateBlockSection">
             <TDStackBarGraph
-              data={dataForBlockGraph(data, onSatVByteSelected)}
+              data={dataForBlockGraph(
+                data,
+                onSatVByteSelected,
+                selectionsState.satVByteSelected
+              )}
               verticalSize={600}
               barWidth={300}
               //by="byLeft"
               //by="byRight"
               by="byBoth"
             />
-            {satVByteSelected !== -1 && <p>SatVByte: {satVByteSelected}</p>}
+
+            {selectionsState.blockSelected !== -1 && (
+              <p>
+                {getNumberWithOrdinal(selectionsState.blockSelected + 1)} block
+              </p>
+            )}
           </div>
         )}
-        {satVByteSelected !== -1 && (
+        {selectionsState.satVByteSelected !== -1 && (
           <div className="TxsSection">
             <TDStackBarGraph
-              data={dataForTxsGraph(data, onTxSelected)}
+              data={dataForTxsGraph(
+                data,
+                onTxIndexSelected,
+                selectionsState.txIndexSelected
+              )}
               verticalSize={600}
               barWidth={300}
               //by="byLeft"
               //by="byRight"
               by="byBoth"
             />
-            {txIdSelected !== "" && <p>TxId: {txIdSelected}</p>}
+            {selectionsState.satVByteSelected !== -1 && (
+              <p>SatVByte: {selectionsState.satVByteSelected}</p>
+            )}
+            {selectionsState.txIndexSelected !== -1 && (
+              <p>TxIndex: {selectionsState.txIndexSelected}</p>
+            )}
           </div>
         )}
       </div>
+      {selectionsState.txIdSelected !== "" && (
+        <p>TxId: {selectionsState.txIdSelected}</p>
+      )}
     </div>
   );
 }
 
-function dataForMiningQueueGraph(data, onBlockSelected) {
+function dataForMiningQueueGraph(data, onBlockSelected, selectedIndex) {
   return {
     id: "MiningQueueGraph",
     adData: {}, // whathever more needed
-    values: data.candidateBlockRecapList, //Array of values to draw
+    values: data.mempool, //Array of values to draw
     fnValues: {
       fnLDValue: (e) => e.w, //Left dimension value function: weight
       fnRDValue: (e) => e.n, //Right dimension value function: numTxs
       fnCDValue: (e) => e.t, //Color dimension value function: totalFees
     },
+    selectedIndex: selectedIndex,
     strokeWidth: "1",
     colorRange: ["LightGreen", "red"],
     fnOnSelected: onBlockSelected, //when block is selected
@@ -304,7 +371,7 @@ function dataForMiningQueueGraph(data, onBlockSelected) {
           <tr><td>satVByte (average):</td><td class="TipData"></td></tr>
       </table>`,
     htmlTipData: [
-      (e) => e.index + 1 + "º",
+      (e) => getNumberWithOrdinal(e.index + 1),
       (e) => format(",")(e.w),
       (e) => format(",")(e.t),
       (e) => e.n,
@@ -313,16 +380,17 @@ function dataForMiningQueueGraph(data, onBlockSelected) {
   };
 }
 
-function dataForBlockGraph(data, onSatVByteSelected) {
+function dataForBlockGraph(data, onSatVByteSelected, selectedIndex) {
   return {
     id: "BlockGraph",
     adData: {}, // whathever more needed
-    values: data.candidateBlockHistogram, //Array of values to draw
+    values: data.blockHistogram, //Array of values to draw
     fnValues: {
       fnLDValue: (e) => e.w, //Left dimension value function: weight
       fnRDValue: (e) => e.n, //Right dimension value function: numTxs
       fnCDValue: (e) => e.m, //Color dimension value function: modSatVByte
     },
+    selectedIndex: selectedIndex,
     strokeWidth: "0.5",
     colorRange: ["LightGreen", "red"],
     fnOnSelected: onSatVByteSelected, //when satVByte is selected
@@ -342,20 +410,21 @@ function dataForBlockGraph(data, onSatVByteSelected) {
   };
 }
 
-function dataForTxsGraph(data, onTxSelected) {
+function dataForTxsGraph(data, onTxIndexSelected, selectedIndex) {
   return {
     id: "TxsGraph",
     adData: {}, // whathever more needed
-    values: data.satVByteHistogramElement, //Array of values to draw
+    values: data.satVByteHistogram, //Array of values to draw
     fnValues: {
       fnLDValue: (e) => e.w, //Left dimension value function: weight
       fnRDValue: (e) => 1, //Right dimension value function: Always 1
       fnCDValue: (e) => 1, //Color dimension value function: Always 1
     },
+    selectedIndex: selectedIndex,
     strokeWidth: "0.5",
     colorRange: ["LightGreen", "red"],
-    fnOnSelected: onTxSelected, //when Txid is selected
-    fnOnSelectedEval: (e) => e.i,
+    fnOnSelected: onTxIndexSelected, //when TxIndex is selected
+    fnOnSelectedEval: (e) => e.index,
     tickFormat: {
       byRightAxisLeft: "~s",
       byLeftOrBothAxisLeft: "~s",
@@ -363,11 +432,20 @@ function dataForTxsGraph(data, onTxSelected) {
     },
     htmlTip: `
       <table>
-          <tr><td>Txid#:</td><td class="TipData"></td></tr>
+          <tr><td>Tx:</td><td class="TipData"></td></tr>
           <tr><td>Weight:</td><td class="TipData"></td></tr>
       </table>`,
-    htmlTipData: [(e) => e.i, (e) => format(",")(e.w)],
+    htmlTipData: [
+      (e) => getNumberWithOrdinal(e.index + 1),
+      (e) => format(",")(e.w),
+    ],
   };
+}
+
+function getNumberWithOrdinal(n) {
+  var s = ["th", "st", "nd", "rd"],
+    v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 function petitionTo(petition, onFunction) {
