@@ -299,32 +299,40 @@ export function MempoolGraph(props) {
         </label>
       </div>
       <div className="Mempool">
-        <div className="txSpeedGraph">
-          <TxSpeedGraph
-            heigth="250"
-            width="100"
-            speed={data.vsizeInLast10minutes}
-          />
-        </div>
         <div className="MiningQueueSection">
-          <ScaleCheckers
-            by={mempoolBy}
-            leftText="Weight"
-            rightText="Num Txs"
-            onChange={setMempoolBy}
-            label="Scale by:"
-          />
-          <TDStackBarGraph
-            data={dataForMiningQueueGraph(
-              data,
-              onBlockSelected,
-              selectionsState.blockSelected
-            )}
-            verticalSize={600}
-            barWidth={300}
-            by={mempoolBy}
-          />
-          <p>Current Mempool</p>
+          <div className="miningQueueScaleCheckersDiv">
+            <ScaleCheckers
+              by={mempoolBy}
+              leftText="Weight"
+              rightText="Num Txs"
+              onChange={setMempoolBy}
+              label="Scale by:"
+            />
+          </div>
+          <div className="txSpeedGraph">
+          <div className="pad"></div>
+            <TxSpeedGraph
+              height="150"
+              width="50"
+              barWidth="30"
+              speed={data.weightInLast10minutes}
+            />
+          </div>
+          <div className="miningQueueGraphDiv">
+            <TDStackBarGraph
+              data={dataForMiningQueueGraph(
+                data,
+                onBlockSelected,
+                selectionsState.blockSelected
+              )}
+              verticalSize={600}
+              barWidth={300}
+              by={mempoolBy}
+            />
+          </div>
+          <div className="miningQueueLabel">
+            <span>Current Mempool</span>
+          </div>
         </div>
         {selectionsState.blockSelected !== -1 && (
           <div className="CandidateBlockSection">
@@ -347,9 +355,9 @@ export function MempoolGraph(props) {
             />
 
             {selectionsState.blockSelected !== -1 && (
-              <p>
+              <span>
                 {getNumberWithOrdinal(selectionsState.blockSelected + 1)} block
-              </p>
+              </span>
             )}
           </div>
         )}
@@ -373,17 +381,16 @@ export function MempoolGraph(props) {
               by={txsBy}
             />
             {selectionsState.satVByteSelected !== -1 && (
-              <p>SatVByte: {selectionsState.satVByteSelected}</p>
-            )}
-            {selectionsState.txIndexSelected !== -1 && (
-              <p>TxIndex: {selectionsState.txIndexSelected}</p>
+              <span>
+                SatVByte: {selectionsState.satVByteSelected}
+                {selectionsState.txIndexSelected !== -1 && (
+                  <span>/TxIndex: {selectionsState.txIndexSelected}</span>
+                )}
+              </span>
             )}
           </div>
         )}
       </div>
-      {selectionsState.txIdSelected !== "" && (
-        <p>TxId: {selectionsState.txIdSelected}</p>
-      )}
     </div>
   );
 }
