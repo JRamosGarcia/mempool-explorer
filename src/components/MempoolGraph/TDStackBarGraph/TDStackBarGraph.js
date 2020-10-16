@@ -244,7 +244,7 @@ function drawBar(graph, data, cValues, by, layout, scales) {
   }
 
   function mouseOver(event, datum) {
-    const { htmlTip, htmlTipData, selectedIndex } = data;
+    const { htmlTip, htmlTipData } = data;
     select(this).style("fill", "grey");
 
     if (select("#Infobox" + id).empty()) {

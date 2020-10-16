@@ -2,9 +2,9 @@ import React, { useEffect, useReducer, useState } from "react";
 import { json } from "d3-fetch";
 import { format } from "d3-format";
 import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
-//import { byFrom } from "./Utils/utils";
 import "./MempoolGraph.css";
 import { ScaleCheckers } from "./ScaleCheckers/ScaleCheckers";
+import { TxSpeedGraph } from "./TxSpeedGraph/TxSpeedGraph";
 
 const clone = require("rfdc")();
 
@@ -299,6 +299,13 @@ export function MempoolGraph(props) {
         </label>
       </div>
       <div className="Mempool">
+        <div className="txSpeedGraph">
+          <TxSpeedGraph
+            heigth="250"
+            width="100"
+            speed={data.vsizeInLast10minutes}
+          />
+        </div>
         <div className="MiningQueueSection">
           <ScaleCheckers
             by={mempoolBy}

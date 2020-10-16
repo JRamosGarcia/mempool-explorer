@@ -9,3 +9,6 @@
   text-align: center;
   margin-left: 10px;
 }
+.txSpeedGraph{
+  align-self: flex-end;
+}

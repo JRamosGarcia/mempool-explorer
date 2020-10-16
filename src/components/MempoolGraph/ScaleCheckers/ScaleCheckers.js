@@ -1,5 +1,4 @@
-import React, { useEffect, useReducer, useState } from "react";
-import { byFrom } from "../Utils/utils";
+import React, { useState } from "react";
 
 import "./ScaleCheckers.css";
 
@@ -11,6 +10,15 @@ export function ScaleCheckers(props) {
     return { left: true, right: true };
   }
   const [checks, setChecks] = useState(stateFrom(props.by));
+
+  function byFrom(left, right) {
+    if (left && right) {
+      return "byBoth";
+    }
+    if (left) return "byLeft";
+    if (right) return "byRight";
+    return "byBoth";
+  }
 
   function onChangedLeft(event) {
     const left =
