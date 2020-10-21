@@ -1,9 +1,9 @@
-import React, { useEffect, useReducer, useState } from "react";
 import { json } from "d3-fetch";
 import { format } from "d3-format";
-import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
+import React, { useEffect, useReducer, useState } from "react";
 import "./MempoolGraph.css";
 import { ScaleCheckers } from "./ScaleCheckers/ScaleCheckers";
+import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
 import { TxSpeedGraph } from "./TxSpeedGraph/TxSpeedGraph";
 
 const clone = require("rfdc")();
@@ -48,6 +48,14 @@ export function MempoolGraph(props) {
       console.log(
         "searching for changes of txId:" + selectionsState.txIdSelected
       );
+      petitionTo(
+        "http://localhost:3001/api/tx/" +
+          selectionsState.txIdSelected +
+          "/" +
+          data.lastModTime +
+          "/true",
+        onTimer
+      );
     } else if (selectionsState.blockSelected === -1) {
       petitionTo(
         "http://localhost:3001/api/miningQueue/" + data.lastModTime + "/true",
@@ -77,8 +85,18 @@ export function MempoolGraph(props) {
   }
 
   function updateData() {
-    if (selectionsState.txIdSelected !== "") {
+    if (
+      selectionsState.txIdSelected !== "" 
+    ) {
       console.log("selected TxId:" + selectionsState.txIdSelected);
+      petitionTo(
+        "http://localhost:3001/api/tx/" +
+          selectionsState.txIdSelected +
+          "/" +
+          0 +
+          "/false",
+        onChangeTxData
+      );
     } else if (selectionsState.blockSelected === -1) {
       //petition when first loaded
       petitionTo("http://localhost:3001/api/miningQueue/0/false", setData);
@@ -111,7 +129,7 @@ export function MempoolGraph(props) {
     } else {
       //petition when txIndex selected
       petitionTo(
-        "http://localhost:3001/api/tx/" +
+        "http://localhost:3001/api/txIndex/" +
           selectionsState.blockSelected +
           "/" +
           selectionsState.satVByteSelected +
@@ -120,7 +138,7 @@ export function MempoolGraph(props) {
           "/" +
           data.lastModTime +
           "/false",
-        onChangeTxData
+        onChangeTxIndexData
       );
     }
   }
@@ -240,7 +258,7 @@ export function MempoolGraph(props) {
     }
   }
 
-  function onChangeTxData(incomingData) {
+  function onChangeTxIndexData(incomingData) {
     if (incomingData.lastModTime !== data.lastModTime) {
       onTimer(incomingData);
     } else {
@@ -252,6 +270,19 @@ export function MempoolGraph(props) {
         setSelectionsState({ txIdSelected: incomingData.txIdSelected });
       }
     }
+  }
+
+  function onChangeTxData(incomingData) {
+    setData(incomingData);
+    let newCache = clone(cache);
+    newCache.blockHistogram[incomingData.blockSelected] =
+      incomingData.blockHistogram;
+    const histogramIndex = getHistogramIndex(
+      selectionsState.blockSelected,
+      incomingData.satVByteSelected
+    );
+    newCache.satVByteHistogram[histogramIndex] = incomingData.satVByteHistogram;
+    setCache(newCache);
   }
 
   function onBlockSelected(blockSelected) {
@@ -280,7 +311,6 @@ export function MempoolGraph(props) {
 
   function onTxIdTextChanged(event) {
     setSelectionsState({ txIdSelected: event.target.value });
-    console.log(event.target.value);
   }
 
   return (
@@ -310,7 +340,7 @@ export function MempoolGraph(props) {
             />
           </div>
           <div className="txSpeedGraph">
-          <div className="pad"></div>
+            <div className="pad"></div>
             <TxSpeedGraph
               height="150"
               width="50"
