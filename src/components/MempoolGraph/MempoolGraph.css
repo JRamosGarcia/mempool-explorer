@@ -22,7 +22,7 @@
   flex-direction: column;
   grid-area: graph / txSpeed / label / graph;
 }
-.pad{
+.pad {
   flex-grow: 1;
 }
 .miningQueueGraphDiv {
@@ -30,4 +30,7 @@
 }
 .miningQueueLabel {
   grid-area: label / graph / endRow / endColumn;
+}
+.txNetwork {
+  text-align: left;
 }
