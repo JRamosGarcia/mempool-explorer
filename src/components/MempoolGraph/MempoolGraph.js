@@ -1,27 +1,21 @@
-import { json } from "d3-fetch";
-import { format } from "d3-format";
 import React, { useEffect, useState } from "react";
 import "./MempoolGraph.css";
 import { ScaleCheckers } from "./ScaleCheckers/ScaleCheckers";
 import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
 import { TxSpeedGraph } from "./TxSpeedGraph/TxSpeedGraph";
-import { ForceGraph } from "./ForceGraph/ForceGraph";
-
+import { ForceGraph } from "../ForceGraph/ForceGraph";
+import { ForceGraphHeader } from "../ForceGraph/ForceGraphHeader";
+import { getNumberWithOrdinal, petitionTo } from "../../utils/utils";
+import { UpdateBox } from "../UpdateBox/UpdateBox";
+import {
+  dataForMiningQueueGraph,
+  dataForBlockGraph,
+  dataForTxsGraph,
+  dataForForceGraph,
+} from "./dataCreation";
 const clone = require("rfdc")();
 
 export function MempoolGraph(props) {
-  //useReducer as explained in:
-  // https://stackoverflow.com/questions/53574614/multiple-calls-to-state-updater-from-usestate-in-component-causes-multiple-re-re
-  /*  const [selectionsState, setSelectionsState] = useReducer(
-    (state, newState) => ({ ...state, ...newState }),
-    {
-      blockSelected: -1,
-      satVByteSelected: -1,
-      txIndexSelected: -1,
-      txIdSelected: "",
-    }
-  );
-  */
   const [mempoolBy, setMempoolBy] = useState("byBoth");
   const [blockBy, setBlockBy] = useState("byBoth");
   const [txsBy, setTxsBy] = useState("byBoth");
@@ -29,6 +23,8 @@ export function MempoolGraph(props) {
   const [data, setData] = useState({ txIdSelected: "" });
   const [txIdNotFoundState, setTxIdNotFound] = useState(false);
   const [txIdTextState, setTxIdText] = useState("");
+  const [lockMempool, setLockMempool] = useState(false);
+  const [interactive, setInteractive] = useState(true);
 
   const emptyCache = {
     blockHistogram: {},
@@ -56,8 +52,8 @@ export function MempoolGraph(props) {
   }, []);
 
   function updateDataByTimer() {
+    if (lockMempool === true) return;
     if (data.txIdSelected !== "") {
-      console.log("searching for changes of txId:" + data.txIdSelected);
       petitionTo(
         "http://localhost:3001/api/tx/" +
           data.txIdSelected +
@@ -359,6 +355,31 @@ export function MempoolGraph(props) {
       }
     );
   }
+
+  /*************************************************TxIdChanged Functions ********************************************/
+  function onTxIdSelected(txId) {
+    petitionTo(
+      "http://localhost:3001/api/tx/" + txId + "/" + 0 + "/false",
+      (incomingData) => {
+        if (incomingData.txIdSelected === "") {
+          setTxIdNotFound(true);
+          setData(incomingData); //It will return basic mempool data if tx not found
+        } else {
+          setTxIdNotFound(false);
+          setTxIdText(txId);
+          setData(incomingData);
+        }
+      }
+    );
+  }
+
+  function onSetLockMempool(lock) {
+    console.log(lock);
+    setLockMempool(lock);
+    if (!lock && data.txIdSelected !== "") {
+      onTxIdSelected(data.txIdSelected);
+    }
+  }
   /************************************************DRAWING ******************************************************/
   return (
     <div>
@@ -377,6 +398,11 @@ export function MempoolGraph(props) {
         <button onClick={onTxSearchButton}>Go!</button>
         {txIdNotFoundState && <p className="txIdNotFound">TxId not Found</p>}
       </div>
+      <UpdateBox
+        lockMempool={lockMempool}
+        setLockMempool={onSetLockMempool}
+        lastUpdate={data.lastModTime}
+      />
       <div className="Mempool">
         <div className="MiningQueueSection">
           <div className="miningQueueScaleCheckersDiv">
@@ -469,12 +495,17 @@ export function MempoolGraph(props) {
         )}
       </div>
       {data.txIdSelected !== "" && (
-        <ForceGraph
-          height={400}
-          width={600}
-          colorRange={["LightGreen", "red"]}
-          data={dataForForceGraph(data)}
-        />
+        <div>
+          <ForceGraphHeader
+            interactive={interactive}
+            setInteractive={setInteractive}
+          />
+          <ForceGraph
+            colorRange={["LightGreen", "red"]}
+            interactive={interactive}
+            data={dataForForceGraph(data, onTxIdSelected)}
+          />
+        </div>
       )}
 
       <div className="txNetwork">
@@ -484,338 +515,4 @@ export function MempoolGraph(props) {
       </div>
     </div>
   );
-}
-/*
-      <ForceGraph height={400} width={600} data={dataDummyForForceGraph()} />
-      */
-
-function dataDummyForForceGraph() {
-  return {
-    nodeIndexSelected: 0,
-    nodes: [
-      {
-        txId:
-          "043d648f7c2cf17133dfafb0b6512fac129ee8b6bef530b04a70ef4de6387d48",
-        weight: 904,
-        baseFee: 904,
-        timeInSecs: 1603698828,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "adc3538a5217b559179db552d42fdc3f2637aa3e2cb497bb7a636170119839ed",
-        weight: 18016,
-        baseFee: 468444,
-        timeInSecs: 1603702407,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "d362f86bdf19d04593a149867ec053e956c98d07b75ba738d28117d3285945cf",
-        weight: 5628,
-        baseFee: 4230,
-        timeInSecs: 1603697123,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "b0b7674377c29a4fd18a130fde19233f5b0f992e4c49fa0e1001b6c220e62437",
-        weight: 1492,
-        baseFee: 38728,
-        timeInSecs: 1603702166,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "5bba0052747d27c97bc2857763836562563322d2b6f06cee05f59ef6dadd70e3",
-        weight: 2524,
-        baseFee: 8960,
-        timeInSecs: 1603700870,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "062daa1a2f9089fe0af8466b0f32b8807c8395d9207e4f5abcdd45c07dcf3bb1",
-        weight: 904,
-        baseFee: 3616,
-        timeInSecs: 1603700249,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "34e2faaf02c82f7106482b0cb0f54234d7472ab007788588e8b3e6f2bd1986e9",
-        weight: 3716,
-        baseFee: 15456,
-        timeInSecs: 1603701173,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "ca2fa92736569cd4ecdaf73afa2022cdacc24d7e8112e433782ff08c73eaa4f4",
-        weight: 4308,
-        baseFee: 15597,
-        timeInSecs: 1603700975,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "21a562533f50147d0f7cb866652b9179013b5274fe3f36d6878f2ac94632ae91",
-        weight: 904,
-        baseFee: 3164,
-        timeInSecs: 1603700171,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "0eda50dcb465a53850bb5e891fb327ea59ae7f7bc4b50b3a5be8d9729ed6fad1",
-        weight: 669,
-        baseFee: 2533,
-        timeInSecs: 1603700115,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "42258d80cd28309fc6258ad129a6574877bda47549c98aec8dd2cf53f70ef7e9",
-        weight: 904,
-        baseFee: 675,
-        timeInSecs: 1603696249,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "1b315155b3e8b0b609020e065261011a1c40d742113e31000ddbf3f37136962a",
-        weight: 1944,
-        baseFee: 1566,
-        timeInSecs: 1603697618,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "12e4cbfbf9e1b7a12759ddbeb5436c71f7a519cb7fe3bf8fcf525ca43aff1a92",
-        weight: 904,
-        baseFee: 3164,
-        timeInSecs: 1603701930,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-      {
-        txId:
-          "b7a125d5dd01584539f7fef404f32ab8a6d438a685ccb12c8942c285880888c3",
-        weight: 2080,
-        baseFee: 4176,
-        timeInSecs: 1603700422,
-        bip125Replaceable: false,
-        containingBlockIndex: 1,
-        modifiedSatVByte: 50.8875723830735,
-      },
-    ],
-    edges: [
-      {
-        o: 3,
-        d: 6,
-      },
-      {
-        o: 3,
-        d: 4,
-      },
-      {
-        o: 6,
-        d: 7,
-      },
-      {
-        o: 1,
-        d: 0,
-      },
-      {
-        o: 1,
-        d: 12,
-      },
-      {
-        o: 1,
-        d: 11,
-      },
-      {
-        o: 1,
-        d: 10,
-      },
-      {
-        o: 1,
-        d: 3,
-      },
-      {
-        o: 1,
-        d: 2,
-      },
-      {
-        o: 7,
-        d: 9,
-      },
-      {
-        o: 7,
-        d: 8,
-      },
-      {
-        o: 12,
-        d: 13,
-      },
-      {
-        o: 4,
-        d: 5,
-      },
-    ],
-    nodeIdFn: (node) => node.txId,
-    edgeOriginFn: (edge) => edge.o,
-    edgeDestinationFn: (edge) => edge.d,
-  };
-}
-
-function dataForForceGraph(data) {
-  return {
-    nodeIndexSelected: 0,
-    nodes: data.txDependenciesInfo.nodes,
-    edges: data.txDependenciesInfo.edges,
-    nodeIdFn: (node) => node.txId,
-    edgeOriginFn: (edge) => edge.o,
-    edgeDestinationFn: (edge) => edge.d,
-  };
-}
-
-function dataForMiningQueueGraph(data, onBlockSelected, selectedIndex) {
-  return {
-    id: "MiningQueueGraph",
-    adData: {}, // whathever more needed
-    values: data.mempool, //Array of values to draw
-    fnValues: {
-      fnLDValue: (e) => e.w, //Left dimension value function: weight
-      fnRDValue: (e) => e.n, //Right dimension value function: numTxs
-      fnCDValue: (e) => e.t, //Color dimension value function: totalFees
-    },
-    selectedIndex: selectedIndex,
-    strokeWidth: "1",
-    colorRange: ["LightGreen", "red"],
-    fnOnSelected: onBlockSelected, //when block is selected
-    fnOnSelectedEval: (e) => e.index,
-    tickFormat: {
-      byRightAxisLeft: "~s",
-      byLeftOrBothAxisLeft: "~s",
-      byBothAxisRight: "~s",
-    },
-    htmlTip: `
-      <table>
-          <tr><td>Block#:</td><td class="TipData"></td></tr>
-          <tr><td>Weight:</td><td class="TipData"></td></tr>
-          <tr><td>Total Fees (sat):</td><td class="TipData"></td></tr>
-          <tr><td>Txs#:</td><td class="TipData"></td></tr>
-          <tr><td>satVByte (average):</td><td class="TipData"></td></tr>
-      </table>`,
-    htmlTipData: [
-      (e) => getNumberWithOrdinal(e.index + 1),
-      (e) => format(",")(e.w),
-      (e) => format(",")(e.t),
-      (e) => e.n,
-      (e) => format(".6f")(e.t / (e.w / 4)),
-    ],
-  };
-}
-
-function dataForBlockGraph(data, onSatVByteSelected, selectedIndex) {
-  return {
-    id: "BlockGraph",
-    adData: {}, // whathever more needed
-    values: data.blockHistogram, //Array of values to draw
-    fnValues: {
-      fnLDValue: (e) => e.w, //Left dimension value function: weight
-      fnRDValue: (e) => e.n, //Right dimension value function: numTxs
-      fnCDValue: (e) => e.m, //Color dimension value function: modSatVByte
-    },
-    selectedIndex: selectedIndex,
-    strokeWidth: "0.5",
-    colorRange: ["LightGreen", "red"],
-    fnOnSelected: onSatVByteSelected, //when satVByte is selected
-    fnOnSelectedEval: (e) => e.m,
-    tickFormat: {
-      byRightAxisLeft: "~s",
-      byLeftOrBothAxisLeft: "~s",
-      byBothAxisRight: "~s",
-    },
-    htmlTip: `
-      <table>
-          <tr><td>modSatVByte:</td><td class="TipData"></td></tr>
-          <tr><td>Txs#:</td><td class="TipData"></td></tr>
-          <tr><td>Weight:</td><td class="TipData"></td></tr>
-      </table>`,
-    htmlTipData: [(e) => e.m, (e) => e.n, (e) => format(",")(e.w)],
-  };
-}
-
-function dataForTxsGraph(data, onTxIndexSelected, selectedIndex) {
-  return {
-    id: "TxsGraph",
-    adData: {}, // whathever more needed
-    values: data.satVByteHistogram, //Array of values to draw
-    fnValues: {
-      fnLDValue: (e) => e.w, //Left dimension value function: weight
-      fnRDValue: (e) => 1, //Right dimension value function: Always 1
-      fnCDValue: (e) => 1, //Color dimension value function: Always 1
-    },
-    selectedIndex: selectedIndex,
-    strokeWidth: "0.5",
-    colorRange: ["LightGreen", "red"],
-    fnOnSelected: onTxIndexSelected, //when TxIndex is selected
-    fnOnSelectedEval: (e) => e.index,
-    tickFormat: {
-      byRightAxisLeft: "~s",
-      byLeftOrBothAxisLeft: "~s",
-      byBothAxisRight: "",
-    },
-    htmlTip: `
-      <table>
-          <tr><td>Tx:</td><td class="TipData"></td></tr>
-          <tr><td>Weight:</td><td class="TipData"></td></tr>
-      </table>`,
-    htmlTipData: [
-      (e) => getNumberWithOrdinal(e.index + 1),
-      (e) => format(",")(e.w),
-    ],
-  };
-}
-
-function getNumberWithOrdinal(n) {
-  var s = ["th", "st", "nd", "rd"],
-    v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
-function petitionTo(petition, onFunction) {
-  json(petition)
-    .then((incomingData) => {
-      console.log("petition at " + petition);
-      onFunction(incomingData);
-    })
-    .catch((error) => console.log(error));
 }
