@@ -9,6 +9,7 @@ import { drag } from "d3-drag";
 import { select, selectAll } from "d3-selection";
 import { scaleLinear } from "d3-scale";
 import { interpolateHcl } from "d3-interpolate";
+import { timeout } from "d3-timer";
 import { useWindowSize } from "../../hooks/windowSize";
 import "./ForceGraph.css";
 
@@ -96,6 +97,8 @@ function dataViz(layout, scaleColor, cData, interactive) {
     edge.target = nodes[edgeDestinationFn(edge)];
   });
 
+  select("#svgForceGraph").selectAll("*").remove();
+
   const infobox = select("#InfoboxForceGraph");
   if (!infobox.empty()) {
     infobox.remove();
@@ -104,78 +107,111 @@ function dataViz(layout, scaleColor, cData, interactive) {
   const simulation = forceSimulation(nodes)
     .force("charge", forceManyBody().strength(-layout.gravityForce))
     .force("link", forceLink(edges))
+    .force("bounds", boxingForce)
     .force(
       "center",
       forceCenter()
         .x(layout.svgSize.X / 2)
         .y(layout.svgSize.Y / 2)
-    )
-    .on("tick", forceTick);
+    );
 
-  select("#svgForceGraph").selectAll("*").remove();
+  if (interactive === true) {
+    simulation.on("tick", tick);
+    drawGraph();
+  } else {
+    simulation.stop();
 
-  select("#svgForceGraph")
-    .selectAll("line.link")
-    .data(edges)
-    .enter()
-    .append("line")
-    .attr("class", "link")
-    .style("stroke", "black")
-    .style("stroke-width", 1);
-
-  const nodeGroup = select("#svgForceGraph")
-    .selectAll("g.node")
-    .data(nodes)
-    .enter()
-    .append("g")
-    .attr("class", "node");
-
-  nodeGroup
-    .append("circle")
-    .attr("r", nodeRadius)
-    .style("fill", (n) => scaleColor(n.satVByte))
-    .style("stroke-width", nodeStrokeWidth)
-    .style("stroke-dasharray", (n) =>
-      n.bip125Replaceable === true ? "6,6" : "none"
-    )
-    .style("stroke", (n) =>
-      n.isSelected === true ? "DarkSlateGray" : "lightGrey"
-    )
-    .on("dblclick", elementDblClick)
-    .on("mouseover", mouseOver)
-    .on("mouseout", mouseOut)
-    .on("mousemove", mouseMove);
-
-  if (interactive) {
-    nodeGroup.on("click", elementClick).call(myDrag(simulation));
+    timeout(() => {
+      // See https://github.com/d3/d3-force/blob/master/README.md#simulation_tick
+      for (
+        var i = 0,
+          n = Math.ceil(
+            Math.log(simulation.alphaMin()) /
+              Math.log(1 - simulation.alphaDecay())
+          );
+        i < n;
+        ++i
+      ) {
+        simulation.tick();
+      }
+      drawGraph();
+    });
   }
 
-  nodeGroup
-    .append("text")
-    .style("text-anchor", "middle")
-    .style("font-size", 9)
-    .style("pointer-events", "none")
-    .attr("y", 3)
-    .text((n) => n.txId.substr(0, 4));
-
-  select("#svgForceGraph")
-    .append("defs")
-    .append("marker")
-    .attr("id", "triangle")
-    .attr("refX", nodeRadius + nodeStrokeWidth + 12)
-    .attr("refY", 6)
-    .attr("markerUnits", "userSpaceOnUse")
-    .attr("markerWidth", 12)
-    .attr("markerHeight", 18)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M 0 0 12 6 0 12 3 6");
-
-  select("#svgForceGraph")
-    .selectAll("line.link")
-    .attr("marker-end", "url(#triangle)");
-
   return simulation;
+
+  function drawGraph() {
+    const lineGroup = select("#svgForceGraph")
+      .selectAll("line.link")
+      .data(edges)
+      .enter()
+      .append("line")
+      .attr("class", "link")
+      .style("stroke", "black")
+      .style("stroke-width", 1);
+    if (interactive === false) {
+      lineGroup
+        .attr("x1", (d) => d.source.x)
+        .attr("y1", (d) => d.source.y)
+        .attr("x2", (d) => d.target.x)
+        .attr("y2", (d) => d.target.y);
+    }
+    const nodeGroup = select("#svgForceGraph")
+      .selectAll("g.node")
+      .data(nodes)
+      .enter()
+      .append("g")
+      .attr("class", "node");
+    if (interactive === false) {
+      nodeGroup.attr("transform", (n) => `translate(${n.x},${n.y})`);
+    }
+
+    nodeGroup
+      .append("circle")
+      .attr("r", nodeRadius)
+      .style("fill", (n) => scaleColor(n.satVByte))
+      .style("stroke-width", nodeStrokeWidth)
+      .style("stroke-dasharray", (n) =>
+        n.bip125Replaceable === true ? "6,6" : "none"
+      )
+      .style("stroke", (n) =>
+        n.isSelected === true ? "DarkSlateGray" : "lightGrey"
+      )
+      //      .on("click", elementClickToSelect)
+      .on("click", elementClick)
+      .on("mouseover", mouseOver)
+      .on("mouseout", mouseOut)
+      .on("mousemove", mouseMove);
+
+    if (interactive === true) {
+      nodeGroup.call(myDrag(simulation));
+    }
+
+    nodeGroup
+      .append("text")
+      .style("text-anchor", "middle")
+      .style("font-size", 9)
+      .style("pointer-events", "none")
+      .attr("y", 3)
+      .text((n) => n.txId.substr(0, 4));
+
+    select("#svgForceGraph")
+      .append("defs")
+      .append("marker")
+      .attr("id", "triangle")
+      .attr("refX", nodeRadius + nodeStrokeWidth + 12)
+      .attr("refY", 6)
+      .attr("markerUnits", "userSpaceOnUse")
+      .attr("markerWidth", 12)
+      .attr("markerHeight", 18)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M 0 0 12 6 0 12 3 6");
+
+    select("#svgForceGraph")
+      .selectAll("line.link")
+      .attr("marker-end", "url(#triangle)");
+  }
 
   function myDrag(simulation) {
     function clamp(x, lo, hi) {
@@ -193,40 +229,43 @@ function dataViz(layout, scaleColor, cData, interactive) {
     return drag().on("start", dragstarted).on("drag", dragged);
   }
 
-  function forceTick() {
+  function boxingForce() {
+    const totalRadius = nodeRadius + nodeStrokeWidth;
+
+    for (let n of nodes) {
+      n.x = Math.max(
+        totalRadius,
+        Math.min(layout.svgSize.X - totalRadius, n.x)
+      );
+      n.y = Math.max(
+        totalRadius,
+        Math.min(layout.svgSize.Y - totalRadius, n.y)
+      );
+    }
+  }
+
+  function tick() {
     select("#svgForceGraph")
       .selectAll("g.node")
-      .attr("transform", (n) => {
-        const totalRadius = nodeRadius + nodeStrokeWidth;
-        n.x = Math.max(
-          totalRadius,
-          Math.min(layout.svgSize.X - totalRadius, n.x)
-        );
-        n.y = Math.max(
-          totalRadius,
-          Math.min(layout.svgSize.Y - totalRadius, n.y)
-        );
-        return `translate(${n.x},${n.y})`;
-      });
+      .attr("transform", (n) => `translate(${n.x},${n.y})`);
 
     select("#svgForceGraph")
       .selectAll("line.link")
-      .attr("x1", (e) => nodes[edgeOriginFn(e)].x)
-      .attr("x2", (e) => nodes[edgeDestinationFn(e)].x)
-      .attr("y1", (e) => nodes[edgeOriginFn(e)].y)
-      .attr("y2", (e) => nodes[edgeDestinationFn(e)].y);
+      .attr("x1", (d) => d.source.x)
+      .attr("y1", (d) => d.source.y)
+      .attr("x2", (d) => d.target.x)
+      .attr("y2", (d) => d.target.y);
   }
 
   function elementClick(event, d) {
-    delete d.fx;
-    delete d.fy;
-    select(this).classed("fixed", false);
-    simulation.alpha(1).restart();
-  }
-
-  function elementDblClick(event, datum) {
+    if (interactive === true) {
+      delete d.fx;
+      delete d.fy;
+      select(this).classed("fixed", false);
+      simulation.alpha(1).restart();
+    }
     const { fnOnSelected, fnOnSelectedEval } = cData;
-    fnOnSelected(fnOnSelectedEval(datum));
+    fnOnSelected(fnOnSelectedEval(d));
 
     const infobox = select("#InfoboxForceGraph");
     if (!infobox.empty()) {

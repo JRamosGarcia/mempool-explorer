@@ -507,12 +507,12 @@ export function MempoolGraph(props) {
           />
         </div>
       )}
-
-      <div className="txNetwork">
-        {data.txDependenciesInfo !== null && (
-          <pre>{JSON.stringify(data.txDependenciesInfo, null, 2)}</pre>
-        )}
-      </div>
     </div>
   );
 }
+/*
+<div className="txNetwork">
+{data.txDependenciesInfo !== null && (
+  <pre>{JSON.stringify(data.txDependenciesInfo, null, 2)}</pre>
+)}
+</div>*/
