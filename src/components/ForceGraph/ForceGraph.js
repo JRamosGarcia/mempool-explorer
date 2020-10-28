@@ -89,22 +89,19 @@ function createLayout(cData, size) {
 
 function dataViz(layout, scaleColor, cData, interactive) {
   const { nodes, edges, edgeOriginFn, edgeDestinationFn } = cData;
-
+  const { width, height } = layout.svgSize;
   edges.forEach((edge) => {
     //edge.weight = parseInt(edge.weight);
     edge.source = nodes[edgeOriginFn(edge)];
     edge.target = nodes[edgeDestinationFn(edge)];
   });
 
-  //console.log("nodes: ", nodes);
-  //console.log("edges: ", edges);
-
   const infobox = select("#InfoboxForceGraph");
   if (!infobox.empty()) {
     infobox.remove();
   }
 
-  const sim = forceSimulation(nodes)
+  const simulation = forceSimulation(nodes)
     .force("charge", forceManyBody().strength(-layout.gravityForce))
     .force("link", forceLink(edges))
     .force(
@@ -144,15 +141,15 @@ function dataViz(layout, scaleColor, cData, interactive) {
     .style("stroke", (n) =>
       n.isSelected === true ? "DarkSlateGray" : "lightGrey"
     )
-    .on("click", elementClick)
+    .on("dblclick", elementDblClick)
     .on("mouseover", mouseOver)
     .on("mouseout", mouseOut)
     .on("mousemove", mouseMove);
 
   if (interactive) {
-    nodeGroup.call(myDrag(sim));
+    nodeGroup.on("click", elementClick).call(myDrag(simulation));
   }
-  
+
   nodeGroup
     .append("text")
     .style("text-anchor", "middle")
@@ -178,30 +175,22 @@ function dataViz(layout, scaleColor, cData, interactive) {
     .selectAll("line.link")
     .attr("marker-end", "url(#triangle)");
 
-  return sim;
+  return simulation;
 
   function myDrag(simulation) {
+    function clamp(x, lo, hi) {
+      return x < lo ? lo : x > hi ? hi : x;
+    }
     function dragstarted(event) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
+      select(this).classed("fixed", true);
     }
 
-    function dragged(event) {
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
+    function dragged(event, d) {
+      d.fx = clamp(event.x, 0, width);
+      d.fy = clamp(event.y, 0, height);
+      simulation.alpha(1).restart();
     }
-
-    function dragended(event) {
-      if (!event.active) simulation.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
-    }
-
-    return drag()
-      .on("start", dragstarted)
-      .on("drag", dragged)
-      .on("end", dragended);
+    return drag().on("start", dragstarted).on("drag", dragged);
   }
 
   function forceTick() {
@@ -228,7 +217,14 @@ function dataViz(layout, scaleColor, cData, interactive) {
       .attr("y2", (e) => nodes[edgeDestinationFn(e)].y);
   }
 
-  function elementClick(event, datum) {
+  function elementClick(event, d) {
+    delete d.fx;
+    delete d.fy;
+    select(this).classed("fixed", false);
+    simulation.alpha(1).restart();
+  }
+
+  function elementDblClick(event, datum) {
     const { fnOnSelected, fnOnSelectedEval } = cData;
     fnOnSelected(fnOnSelectedEval(datum));
 
