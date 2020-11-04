@@ -1,5 +1,5 @@
 import { format } from "d3-format";
-import { fromUnixTime, intervalToDuration, formatDuration } from "date-fns";
+import { intervalToDuration, formatDuration } from "date-fns";
 import { getNumberWithOrdinal } from "../../utils/utils";
 
 export function dataForForceGraph(data, onTxIdSelected) {
@@ -12,7 +12,7 @@ export function dataForForceGraph(data, onTxIdSelected) {
     fnOnSelected: onTxIdSelected,
     fnOnSelectedEval: (n) => n.txId,
     htmlTip: `
-      <table>
+      <table class="toolTipTable">
           <tr><td>TxId:</td><td class="FGTipData"></td></tr>
           <tr><td>Weight:</td><td class="FGTipData"></td></tr>
           <tr><td>Base fee (sat):</td><td class="FGTipData"></td></tr>
@@ -29,12 +29,12 @@ export function dataForForceGraph(data, onTxIdSelected) {
       (n) => format(",")(n.baseFee),
       (n) => {
         const duration = intervalToDuration({
-          start: fromUnixTime(n.timeInSecs),
+          start: new Date(n.timeInMillis),
           end: new Date(),
         });
         return formatDuration(duration);
       },
-      (n) => fromUnixTime(n.timeInSecs),
+      (n) => new Date(n.timeInMillis),
       (n) => format(".6f")(n.baseFee / (n.weight / 4)),
       (n) => format(".6f")(n.modifiedSatVByte),
       (n) => n.bip125Replaceable,
@@ -64,7 +64,7 @@ export function dataForMiningQueueGraph(data, onBlockSelected, selectedIndex) {
       byBothAxisRight: "~s",
     },
     htmlTip: `
-        <table>
+        <table class="toolTipTable">
             <tr><td>Block#:</td><td class="TipData"></td></tr>
             <tr><td>Weight:</td><td class="TipData"></td></tr>
             <tr><td>Total Fees (sat):</td><td class="TipData"></td></tr>
@@ -102,7 +102,7 @@ export function dataForBlockGraph(data, onSatVByteSelected, selectedIndex) {
       byBothAxisRight: "~s",
     },
     htmlTip: `
-        <table>
+        <table class="toolTipTable">
             <tr><td>modSatVByte:</td><td class="TipData"></td></tr>
             <tr><td>Txs#:</td><td class="TipData"></td></tr>
             <tr><td>Weight:</td><td class="TipData"></td></tr>
@@ -132,7 +132,7 @@ export function dataForTxsGraph(data, onTxIndexSelected, selectedIndex) {
       byBothAxisRight: "",
     },
     htmlTip: `
-        <table>
+        <table class="toolTipTable">
             <tr><td>Tx:</td><td class="TipData"></td></tr>
             <tr><td>Weight:</td><td class="TipData"></td></tr>
         </table>`,

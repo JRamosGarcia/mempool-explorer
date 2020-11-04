@@ -319,15 +319,31 @@ function dataViz(layout, scaleColor, cData, interactive) {
 function processData(cData) {
   const { nodeIdFn } = cData;
 
+  //Change short names in nodes for longer ones and calculate maxminSatVByte
   cData.maxSatVByte = 0;
   cData.minSatVByte = Number.MAX_VALUE;
+  const newNodes = [];
   cData.nodes.forEach((n) => {
-    n.satVByte = n.baseFee / (n.weight / 4);
-    n.isSelected = false;
-    cData.maxSatVByte = Math.max(cData.maxSatVByte, n.satVByte);
-    cData.minSatVByte = Math.min(cData.minSatVByte, n.satVByte);
+    const newNode = {};
+    newNode.txId = n.i;
+    newNode.weight = n.w;
+    newNode.baseFee = n.f;
+    newNode.timeInMillis = n.t;
+    newNode.bip125Replaceable = n.b;
+    newNode.containingBlockIndex = n.bi;
+    newNode.modifiedSatVByte = n.m;
+    newNode.satVByte = newNode.baseFee / (newNode.weight / 4);
+    newNode.isSelected = false;
+    newNodes.push(newNode);
+    cData.maxSatVByte = Math.max(cData.maxSatVByte, newNode.satVByte);
+    cData.minSatVByte = Math.min(cData.minSatVByte, newNode.satVByte);
   });
+  cData.nodes = newNodes;
+  //First node is always the selected one
   cData.nodes[0].isSelected = true;
+
+  //Normalize the graph by ordening nodes by TxId.
+  //Edges indexes must be changed acordingly.
 
   //map oldIndex->txId
   const oldIndexToTxId = cData.nodes.reduce((map, node, index) => {
