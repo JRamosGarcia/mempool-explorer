@@ -14,19 +14,24 @@ export function dataForForceGraph(data, onTxIdSelected) {
     htmlTip: `
       <table class="toolTipTable">
           <tr><td>TxId:</td><td class="FGTipData"></td></tr>
+          <tr><td>Containing block:</td><td class="FGTipData"></td></tr>
           <tr><td>Weight:</td><td class="FGTipData"></td></tr>
           <tr><td>Base fee (sat):</td><td class="FGTipData"></td></tr>
-          <tr><td>Enter since:</td><td class="FGTipData"></td></tr>
-          <tr><td>Enter date:</td><td class="FGTipData"></td></tr>
           <tr><td>SatVByte:</td><td class="FGTipData"></td></tr>
-          <tr><td>ModSatVByte:</td><td class="FGTipData"></td></tr>
+          <tr><td>CPFP SatVByte:</td><td class="FGTipData"></td></tr>
           <tr><td>Replaceable:</td><td class="FGTipData"></td></tr>
-          <tr><td>ContainingBlock:</td><td class="FGTipData"></td></tr>
+          <tr><td>Fist seen date:</td><td class="FGTipData"></td></tr>
+          <tr><td>First seen since:</td><td class="FGTipData"></td></tr>
       </table>`,
     htmlTipData: [
       (n) => n.txId,
+      (n) => getNumberWithOrdinal(n.containingBlockIndex + 1),
       (n) => format(",")(n.weight),
       (n) => format(",")(n.baseFee),
+      (n) => format(".6f")(n.baseFee / (n.weight / 4)),
+      (n) => format(".6f")(n.modifiedSatVByte),
+      (n) => n.bip125Replaceable,
+      (n) => new Date(n.timeInMillis),
       (n) => {
         const duration = intervalToDuration({
           start: new Date(n.timeInMillis),
@@ -34,11 +39,6 @@ export function dataForForceGraph(data, onTxIdSelected) {
         });
         return formatDuration(duration);
       },
-      (n) => new Date(n.timeInMillis),
-      (n) => format(".6f")(n.baseFee / (n.weight / 4)),
-      (n) => format(".6f")(n.modifiedSatVByte),
-      (n) => n.bip125Replaceable,
-      (n) => getNumberWithOrdinal(n.containingBlockIndex + 1),
     ],
   };
 }
@@ -103,7 +103,7 @@ export function dataForBlockGraph(data, onSatVByteSelected, selectedIndex) {
     },
     htmlTip: `
         <table class="toolTipTable">
-            <tr><td>modSatVByte:</td><td class="TipData"></td></tr>
+            <tr><td>CPFP SatVByte:</td><td class="TipData"></td></tr>
             <tr><td>Txs#:</td><td class="TipData"></td></tr>
             <tr><td>Weight:</td><td class="TipData"></td></tr>
         </table>`,

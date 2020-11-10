@@ -21,11 +21,11 @@ export function UpdateBox(props) {
   }
 
   function duration(millis) {
-    const duration = intervalToDuration({
+    const txDuration = intervalToDuration({
       start: new Date(millis),
       end: date,
     });
-    return formatDuration(duration);
+    return formatDuration(txDuration);
   }
 
   return (

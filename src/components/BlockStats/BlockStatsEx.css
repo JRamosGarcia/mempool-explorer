@@ -1,0 +1,17 @@
+.blockStatsExSets,
+.blockStatsEx {
+  border-spacing: 0px;
+  border-collapse: collapse;
+  margin: auto;
+  margin-top: 20px;
+}
+.blockStatsExSets th,
+.blockStatsEx th,
+.blockStatsExSets td,
+.blockStatsEx td {
+  border: 1px solid black;
+}
+.blockStatsExSets tr:nth-child(even),
+.blockStatsEx tr:nth-child(even) {
+  background-color: lightgray;
+}

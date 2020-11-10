@@ -15,6 +15,7 @@ import {
   dataForForceGraph,
 } from "./dataCreation";
 import { useParams } from "react-router-dom";
+import { TxDetails } from "../TxDetails/TxDetails";
 
 const clone = require("rfdc")();
 
@@ -38,7 +39,7 @@ export function MempoolGraph(props) {
 
   const [cache, setCache] = useState(clone(emptyCache));
 
-  let { id } = useParams();
+  let { txId } = useParams();
 
   //After each render, this method executes, whatever state changes
   useEffect(() => {
@@ -50,31 +51,31 @@ export function MempoolGraph(props) {
 
   //Only executed once at begining.
   useEffect(() => {
-    console.log(id);
-    if (id !== undefined) {
-      setTxIdText(id);
+    console.log(txId);
+    if (txId !== undefined) {
+      setTxIdText(txId);
       petitionTo(
-        "http://localhost:3001/api/tx/" + id + "/" + 0 + "/false",
-        (data) => {
-          if (data.txIdSelected === "") {
+        "http://localhost:3001/miningQueueAPI/tx/" + txId + "/" + 0 + "/false",
+        (incomingData) => {
+          if (incomingData.txIdSelected === "") {
             setTxIdNotFound(true);
           }
-          setData(data);
+          setData(incomingData);
         }
       );
     } else {
       petitionTo(
-        "http://localhost:3001/api/miningQueue/" + 0 + "/false",
+        "http://localhost:3001/miningQueueAPI/miningQueue/" + 0 + "/false",
         setData
       );
     }
-  }, [id]);
+  }, [txId]);
 
   function updateDataByTimer() {
     if (lockMempool === true) return;
     if (data.txIdSelected !== "") {
       petitionTo(
-        "http://localhost:3001/api/tx/" +
+        "http://localhost:3001/miningQueueAPI/tx/" +
           data.txIdSelected +
           "/" +
           data.lastModTime +
@@ -83,12 +84,14 @@ export function MempoolGraph(props) {
       );
     } else if (data.blockSelected === -1) {
       petitionTo(
-        "http://localhost:3001/api/miningQueue/" + data.lastModTime + "/true",
+        "http://localhost:3001/miningQueueAPI/miningQueue/" +
+          data.lastModTime +
+          "/true",
         onTimer
       );
     } else if (data.satVByteSelected === -1) {
       petitionTo(
-        "http://localhost:3001/api/block/" +
+        "http://localhost:3001/miningQueueAPI/block/" +
           data.blockSelected +
           "/" +
           data.lastModTime +
@@ -97,7 +100,7 @@ export function MempoolGraph(props) {
       );
     } else if (data.txIndexSelected === -1) {
       petitionTo(
-        "http://localhost:3001/api/histogram/" +
+        "http://localhost:3001/miningQueueAPI/histogram/" +
           data.blockSelected +
           "/" +
           data.satVByteSelected +
@@ -165,7 +168,7 @@ export function MempoolGraph(props) {
     //petition when first or subsequent click on block
     if (!checkBlockCache(blockSelected)) {
       petitionTo(
-        "http://localhost:3001/api/block/" +
+        "http://localhost:3001/miningQueueAPI/block/" +
           blockSelected +
           "/" +
           data.lastModTime +
@@ -224,7 +227,7 @@ export function MempoolGraph(props) {
   function onSatVByteSelected(satVByteSelected) {
     if (!checkHistogramCache(satVByteSelected)) {
       petitionTo(
-        "http://localhost:3001/api/histogram/" +
+        "http://localhost:3001/miningQueueAPI/histogram/" +
           data.blockSelected +
           "/" +
           satVByteSelected +
@@ -298,7 +301,7 @@ export function MempoolGraph(props) {
     );
     if (!checkTxDataCacheByIndex(txSelector)) {
       petitionTo(
-        "http://localhost:3001/api/txIndex/" +
+        "http://localhost:3001/miningQueueAPI/txIndex/" +
           data.blockSelected +
           "/" +
           data.satVByteSelected +
@@ -383,7 +386,11 @@ export function MempoolGraph(props) {
 
   function onTxSearchButton() {
     petitionTo(
-      "http://localhost:3001/api/tx/" + txIdTextState + "/" + 0 + "/false",
+      "http://localhost:3001/miningQueueAPI/tx/" +
+        txIdTextState +
+        "/" +
+        0 +
+        "/false",
       (incomingData) => {
         if (incomingData.txIdSelected === "") {
           setTxIdNotFound(true);
@@ -397,16 +404,16 @@ export function MempoolGraph(props) {
   }
 
   /*************************************************TxIdChanged Functions ********************************************/
-  function onTxIdSelected(txId) {
+  function onTxIdSelected(tId) {
     petitionTo(
-      "http://localhost:3001/api/tx/" + txId + "/" + 0 + "/false",
+      "http://localhost:3001/miningQueueAPI/tx/" + tId + "/" + 0 + "/false",
       (incomingData) => {
         if (incomingData.txIdSelected === "") {
           setTxIdNotFound(true);
           setData(incomingData); //It will return basic mempool data if tx not found
         } else {
           setTxIdNotFound(false);
-          setTxIdText(txId);
+          setTxIdText(tId);
           setData(incomingData);
         }
       }
@@ -436,7 +443,9 @@ export function MempoolGraph(props) {
           ></input>
         </label>
         <button onClick={onTxSearchButton}>Go!</button>
-        {txIdNotFoundState && <p className="txIdNotFound">TxId not Found</p>}
+        {txIdNotFoundState && (
+          <p className="txIdNotFound">TxId not Found in mempool</p>
+        )}
       </div>
       <UpdateBox
         lockMempool={lockMempool}
@@ -553,39 +562,16 @@ export function MempoolGraph(props) {
           nodeData={data.txDependenciesInfo.nodes[0]}
         />
       )}
-      {data.tx !== null && (
-        <div style={{ textAlign: "left" }}>
-          <pre>{JSON.stringify(data.tx, null, 2)}</pre>
+      {data.tx !== null && data.txDependenciesInfo !== undefined && (
+        <div>
+          <p>Transaction Details:</p>
+          <TxDetails
+            data={data.tx}
+            nodeData={data.txDependenciesInfo.nodes[0]}
+            fblTxSatVByte={data.fblTxSatVByte}
+          />
         </div>
       )}
     </div>
   );
 }
-/*        <IgnoringBlocksTable
-          igData={ignoredDummies(30)}
-          nodeData={data.txDependenciesInfo.nodes[0]}
-        />
-*/
-/*function ignoredDummies(count) {
-  const dummie = {
-    ignoringBlocks: [],
-    totalSVByteLost: 0,
-    totalFeesLost: 0,
-  };
-  for (let i = 0; i < count; i++) {
-    const coinbase = {
-      ascciOfField: "asldfjaslfAntoñetea;sldfjas;ldf",
-      minerName: "Antonio Molina",
-    };
-    const ib = {
-      height: 956456 + i,
-      txsInBlock: 6464,
-      posInBlock: 15,
-      time: new Date().getMilliseconds(),
-      coinBaseData: coinbase,
-    };
-    dummie.ignoringBlocks.push(ib);
-  }
-  return dummie;
-}
-*/
