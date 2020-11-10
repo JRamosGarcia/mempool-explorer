@@ -10,7 +10,7 @@ import { select, selectAll } from "d3-selection";
 import { scaleLinear } from "d3-scale";
 import { interpolateHcl } from "d3-interpolate";
 import { timeout } from "d3-timer";
-import { useWindowSize } from "../../hooks/windowSize";
+import { useWindowSize } from "../../../hooks/windowSize";
 import "./ForceGraph.css";
 
 const clone = require("rfdc")();

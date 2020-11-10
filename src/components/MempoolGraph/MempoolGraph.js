@@ -3,11 +3,11 @@ import "./MempoolGraph.css";
 import { ScaleCheckers } from "./ScaleCheckers/ScaleCheckers";
 import { TDStackBarGraph } from "./TDStackBarGraph/TDStackBarGraph";
 import { TxSpeedGraph } from "./TxSpeedGraph/TxSpeedGraph";
-import { ForceGraph } from "../ForceGraph/ForceGraph";
-import { ForceGraphHeader } from "../ForceGraph/ForceGraphHeader";
+import { ForceGraph } from "./ForceGraph/ForceGraph";
+import { ForceGraphHeader } from "./ForceGraph/ForceGraphHeader";
 import { getNumberWithOrdinal, petitionTo } from "../../utils/utils";
-import { UpdateBox } from "../UpdateBox/UpdateBox";
-import { IgnoringBlocksTable } from "../IgnoringBlocksTable/IgnoringBlocksTable";
+import { UpdateBox } from "./UpdateBox/UpdateBox";
+import { IgnoringBlocksTable } from "./IgnoringBlocksTable/IgnoringBlocksTable";
 import {
   dataForMiningQueueGraph,
   dataForBlockGraph,
@@ -15,7 +15,7 @@ import {
   dataForForceGraph,
 } from "./dataCreation";
 import { useParams } from "react-router-dom";
-import { TxDetails } from "../TxDetails/TxDetails";
+import { TxDetails } from "./TxDetails/TxDetails";
 
 const clone = require("rfdc")();
 

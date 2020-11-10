@@ -8,6 +8,9 @@
   border: 1px solid black;
   border-spacing: 0px;
 }
+.txDetailsTable tr:nth-child(even) {
+  background-color: lightgray;
+}
 
 .txIODetailsTable {
   border-spacing: 0px;

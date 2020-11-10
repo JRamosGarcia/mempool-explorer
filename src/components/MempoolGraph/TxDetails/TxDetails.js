@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { intervalToDuration, formatDuration } from "date-fns";
 import { format } from "d3-format";
-import { getNumberWithOrdinal } from "../../utils/utils";
+import { getNumberWithOrdinal } from "../../../utils/utils";
 import { TxInput } from "./TxInput";
 import { TxOutput } from "./TxOutput";
 import "./TxDetails.css";

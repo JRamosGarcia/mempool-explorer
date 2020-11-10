@@ -3,8 +3,14 @@ import "./BlockStatsList.css";
 import { format } from "d3-format";
 import { Link } from "react-router-dom";
 
+const clone = require("rfdc")();
+
 export function BlockStatsList(props) {
   const { igBlockList } = props;
+
+  const igBList = clone(igBlockList);
+
+  igBList.sort((bA, bB) => bB.h - bA.h);
 
   return (
     <div>
@@ -22,18 +28,20 @@ export function BlockStatsList(props) {
           </tr>
         </thead>
         <tbody>
-          {igBlockList.map((igb) => (
+          {igBList.map((igb) => (
             <tr key={igb.h}>
               <td>
                 <Link to={"/block/" + igb.h}>{igb.h}</Link>
               </td>
-              <td>{igb.mn}</td>
+              <td>
+                <Link to={"/miner/" + igb.mn}>{igb.mn}</Link>
+              </td>
               <td>{format(",")(igb.lr)}</td>
               <td>{format(",")(igb.lreNIM)}</td>
               <td>{new Date(igb.t).toISOString()}</td>
-              <td>{igb.nInMB}</td>
-              <td>{igb.nInCB}</td>
-              <td>{igb.nInMP}</td>
+              <td>{format(",")(igb.nInMB)}</td>
+              <td>{format(",")(igb.nInCB)}</td>
+              <td>{format(",")(igb.nInMP)}</td>
             </tr>
           ))}
         </tbody>
@@ -41,4 +49,3 @@ export function BlockStatsList(props) {
     </div>
   );
 }
-

@@ -1,7 +1,7 @@
 import React from "react";
 import { format } from "d3-format";
-import { getNumberWithOrdinal } from "../../utils/utils";
-import { useWindowSize } from "../../hooks/windowSize";
+import { getNumberWithOrdinal } from "../../../utils/utils";
+import { useWindowSize } from "../../../hooks/windowSize";
 import { intervalToDuration, formatDuration } from "date-fns";
 import { Link } from "react-router-dom";
 
@@ -138,14 +138,7 @@ export function IgnoringBlocksTable(props) {
     </div>
   );
 }
-/*<tr>
-<td>Coinbase ascii</td>
-{data.ignoringBlocks.map((ib) => (
-  <td key={ib.height + "ascciOfField"}>
-    {ib.coinBaseData.ascciOfField}
-  </td>
-))}
-</tr>*/
+
 function createLayout(size) {
   const margins = { horizontal: 100, vertical: 0 };
 

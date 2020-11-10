@@ -1,13 +1,33 @@
-import React from "react";
-import "./MinerStats.css";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import "./MinerStats.css";
+import { MinersStatsList } from "./MinersStatsList";
+import { BlockStatsList } from "../BlockStats/BlockStatsList";
+import { petitionTo } from "../../utils/utils";
 
 export function MinerStats(props) {
   let { id } = useParams();
 
-  return (
-    <div>
-      <p>Miner Stats for: {id}</p>
-    </div>
-  );
+  const [minersStatsList, setMinersStatsList] = useState([]);
+  const [igBlockList, setIgBlockList] = useState();
+
+  useEffect(() => {
+    if (id === undefined) {
+      petitionTo(
+        "http://localhost:3001/minersStatsAPI/historicStats",
+        setMinersStatsList
+      );
+    } else {
+      petitionTo(
+        "http://localhost:3001/minersStatsAPI/ignoringBlocks/" + id,
+        setIgBlockList
+      );
+    }
+  }, [id]);
+
+  if (id === undefined) {
+    return <MinersStatsList minersStatsList={minersStatsList} />;
+  } else if (igBlockList !== undefined) {
+    return <BlockStatsList igBlockList={igBlockList} />;
+  } else return null;
 }
