@@ -8,6 +8,22 @@ export function TxOutput(props) {
   return (
     <table className="txOutputTable">
       <tbody>
+        <tr>
+          <td>#{index}</td>
+          {txOutput.addressIds.map((addr, i, a) => (
+            <td>{`${addr} ${a.length - 1 === i ? "" : ", "}`}</td>
+          ))}
+          <td>{satsToBTC(txOutput.amount)} BTC</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+/*
+  return (
+    <table className="txOutputTable">
+      <tbody>
         {txOutput.addressIds.map((addr, i, a) => (
           <tr key={index}>
             <td>#{index}</td>
@@ -17,5 +33,4 @@ export function TxOutput(props) {
         ))}
       </tbody>
     </table>
-  );
-}
+  );*/
