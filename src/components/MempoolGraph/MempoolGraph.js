@@ -55,7 +55,7 @@ export function MempoolGraph(props) {
     if (txId !== undefined) {
       setTxIdText(txId);
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/tx/" + txId + "/" + 0 + "/false",
+        "/miningQueueAPI/tx/" + txId + "/" + 0 + "/false",
         (incomingData) => {
           if (incomingData.txIdSelected === "") {
             setTxIdNotFound(true);
@@ -65,7 +65,7 @@ export function MempoolGraph(props) {
       );
     } else {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/miningQueue/" + 0 + "/false",
+        "/miningQueueAPI/miningQueue/" + 0 + "/false",
         setData
       );
     }
@@ -75,7 +75,7 @@ export function MempoolGraph(props) {
     if (lockMempool === true) return;
     if (data.txIdSelected !== "") {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/tx/" +
+        "/miningQueueAPI/tx/" +
           data.txIdSelected +
           "/" +
           data.lastModTime +
@@ -84,14 +84,14 @@ export function MempoolGraph(props) {
       );
     } else if (data.blockSelected === -1) {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/miningQueue/" +
+        "/miningQueueAPI/miningQueue/" +
           data.lastModTime +
           "/true",
         onTimer
       );
     } else if (data.satVByteSelected === -1) {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/block/" +
+        "/miningQueueAPI/block/" +
           data.blockSelected +
           "/" +
           data.lastModTime +
@@ -100,7 +100,7 @@ export function MempoolGraph(props) {
       );
     } else if (data.txIndexSelected === -1) {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/histogram/" +
+        "/miningQueueAPI/histogram/" +
           data.blockSelected +
           "/" +
           data.satVByteSelected +
@@ -168,7 +168,7 @@ export function MempoolGraph(props) {
     //petition when first or subsequent click on block
     if (!checkBlockCache(blockSelected)) {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/block/" +
+        "/miningQueueAPI/block/" +
           blockSelected +
           "/" +
           data.lastModTime +
@@ -227,7 +227,7 @@ export function MempoolGraph(props) {
   function onSatVByteSelected(satVByteSelected) {
     if (!checkHistogramCache(satVByteSelected)) {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/histogram/" +
+        "/miningQueueAPI/histogram/" +
           data.blockSelected +
           "/" +
           satVByteSelected +
@@ -301,7 +301,7 @@ export function MempoolGraph(props) {
     );
     if (!checkTxDataCacheByIndex(txSelector)) {
       petitionTo(
-        "http://localhost:3001/miningQueueAPI/txIndex/" +
+        "/miningQueueAPI/txIndex/" +
           data.blockSelected +
           "/" +
           data.satVByteSelected +
@@ -386,7 +386,7 @@ export function MempoolGraph(props) {
 
   function onTxSearchButton() {
     petitionTo(
-      "http://localhost:3001/miningQueueAPI/tx/" +
+      "/miningQueueAPI/tx/" +
         txIdTextState +
         "/" +
         0 +
@@ -406,7 +406,7 @@ export function MempoolGraph(props) {
   /*************************************************TxIdChanged Functions ********************************************/
   function onTxIdSelected(tId) {
     petitionTo(
-      "http://localhost:3001/miningQueueAPI/tx/" + tId + "/" + 0 + "/false",
+      "/miningQueueAPI/tx/" + tId + "/" + 0 + "/false",
       (incomingData) => {
         if (incomingData.txIdSelected === "") {
           setTxIdNotFound(true);

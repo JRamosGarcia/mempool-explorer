@@ -14,12 +14,12 @@ export function MinerStats(props) {
   useEffect(() => {
     if (id === undefined) {
       petitionTo(
-        "http://localhost:3001/minersStatsAPI/historicStats",
+        "/minersStatsAPI/historicStats",
         setMinersStatsList
       );
     } else {
       petitionTo(
-        "http://localhost:3001/minersStatsAPI/ignoringBlocks/" + id,
+        "/minersStatsAPI/ignoringBlocks/" + id,
         setIgBlockList
       );
     }

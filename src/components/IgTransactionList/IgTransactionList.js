@@ -6,7 +6,7 @@ export function IgTransactionList(props) {
   const [igTxList, setIgTxList] = useState([]);
 
   useEffect(() => {
-    petitionTo("http://localhost:3001/ignoredTxAPI/ignoredTxs", setIgTxList);
+    petitionTo("/ignoredTxAPI/ignoredTxs", setIgTxList);
   }, []);
 
   return (

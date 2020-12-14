@@ -14,12 +14,12 @@ export function BlockStats(props) {
   useEffect(() => {
     if (id === undefined) {
       petitionTo(
-        "http://localhost:3001/ignoringBlocksAPI/ignoringBlocks",
+        "/ignoringBlocksAPI/ignoringBlocks",
         setIgBlockList
       );
     } else {
       petitionTo(
-        "http://localhost:3001/ignoringBlocksAPI/ignoringBlock/" + id,
+        "/ignoringBlocksAPI/ignoringBlock/" + id,
         setIgBlockEx
       );
     }
