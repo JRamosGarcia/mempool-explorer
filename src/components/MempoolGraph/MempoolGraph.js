@@ -17,8 +17,6 @@ import {
 import { useParams } from "react-router-dom";
 import { TxDetails } from "./TxDetails/TxDetails";
 
-const clone = require("rfdc")();
-
 export function MempoolGraph(props) {
   const [mempoolBy, setMempoolBy] = useState("byBoth");
   const [blockBy, setBlockBy] = useState("byBoth");
@@ -29,15 +27,6 @@ export function MempoolGraph(props) {
   const [txIdTextState, setTxIdText] = useState("");
   const [lockMempool, setLockMempool] = useState(false);
   const [interactive, setInteractive] = useState(true);
-
-  const emptyCache = {
-    blockHistogram: {},
-    satVByteHistogram: {},
-    txDataByIndex: {}, //Contains txDependenciesInfo, txIndexSelected and txIdSelected
-    txDataById: {}, //Contains txDependenciesInfo, txIndexSelected and txIdSelected
-  };
-
-  const [cache, setCache] = useState(clone(emptyCache));
 
   let { txId } = useParams();
 
@@ -54,321 +43,71 @@ export function MempoolGraph(props) {
     console.log(txId);
     if (txId !== undefined) {
       setTxIdText(txId);
-      petitionTo(
-        "/miningQueueAPI/tx/" + txId + "/" + 0 + "/false",
-        (incomingData) => {
-          if (incomingData.txIdSelected === "") {
-            setTxIdNotFound(true);
-          }
-          setData(incomingData);
+      petitionTo("/miningQueueAPI/tx/" + txId, (incomingData) => {
+        if (incomingData.txIdSelected === "") {
+          setTxIdNotFound(true);
         }
-      );
+        setData(incomingData);
+      });
     } else {
-      petitionTo(
-        "/miningQueueAPI/miningQueue/" + 0 + "/false",
-        setData
-      );
+      petitionTo("/miningQueueAPI/miningQueue", setData);
     }
   }, [txId]);
 
   function updateDataByTimer() {
     if (lockMempool === true) return;
     if (data.txIdSelected !== "") {
-      petitionTo(
-        "/miningQueueAPI/tx/" +
-          data.txIdSelected +
-          "/" +
-          data.lastModTime +
-          "/true",
-        onTimer
-      );
+      petitionTo("/miningQueueAPI/tx/" + data.txIdSelected, setData);
     } else if (data.blockSelected === -1) {
-      petitionTo(
-        "/miningQueueAPI/miningQueue/" +
-          data.lastModTime +
-          "/true",
-        onTimer
-      );
+      petitionTo("/miningQueueAPI/miningQueue", setData);
     } else if (data.satVByteSelected === -1) {
-      petitionTo(
-        "/miningQueueAPI/block/" +
-          data.blockSelected +
-          "/" +
-          data.lastModTime +
-          "/true",
-        onTimer
-      );
+      petitionTo("/miningQueueAPI/block/" + data.blockSelected, setData);
     } else if (data.txIndexSelected === -1) {
       petitionTo(
         "/miningQueueAPI/histogram/" +
           data.blockSelected +
           "/" +
-          data.satVByteSelected +
-          "/" +
-          data.lastModTime +
-          "/true",
-        onTimer
+          data.satVByteSelected,
+        setData
       );
-    }
-  }
-
-  function onTimer(incomingData) {
-    if (incomingData.lastModTime !== data.lastModTime) {
-      setData(incomingData);
-      const newCache = clone(emptyCache);
-
-      if (
-        incomingData.blockSelected !== -1 &&
-        incomingData.blockHistogram.length !== 0
-      ) {
-        newCache.blockHistogram[incomingData.blockSelected] =
-          incomingData.blockHistogram;
-      }
-
-      if (
-        incomingData.satVByteSelected !== -1 &&
-        incomingData.satVByteHistogram.length !== 0
-      ) {
-        const histogramIndex =
-          incomingData.blockSelected + "-" + incomingData.satVByteSelected;
-        newCache.satVByteHistogram[histogramIndex] =
-          incomingData.satVByteHistogram;
-      }
-
-      if (
-        incomingData.txIndexSelected !== -1 &&
-        incomingData.txDependenciesInfo.length !== 0 &&
-        incomingData.tx !== null &&
-        incomingData.txIgnoredData.length !== 0 &&
-        incomingData.txIdSelected !== ""
-      ) {
-        const txData = {
-          txIndexSelected: incomingData.txIndexSelected,
-          txIdSelected: incomingData.txIdSelected,
-          txDependenciesInfo: incomingData.txDependenciesInfo,
-          txIgnoredData: incomingData.txIgnoredData,
-          tx: incomingData.tx,
-        };
-        const txSelector = getTxSelector(
-          incomingData.blockSelected,
-          incomingData.satVByteSelected,
-          incomingData.txIndexSelected
-        );
-        newCache.txDataByIndex[txSelector] = txData;
-        newCache.txDataById[incomingData.txIdSelected] = txData;
-      }
-
-      setCache(newCache);
-      console.log("cache cleared");
     }
   }
 
   /**********************************************Block Functions *********************************************/
   function onBlockSelected(blockSelected) {
     //petition when first or subsequent click on block
-    if (!checkBlockCache(blockSelected)) {
-      petitionTo(
-        "/miningQueueAPI/block/" +
-          blockSelected +
-          "/" +
-          data.lastModTime +
-          "/false",
-        onChangeBlockData
-      );
-    }
-  }
-
-  function checkBlockCache(blockSelected) {
-    if (typeof cache.blockHistogram[blockSelected] !== "undefined") {
-      let newData = clone(data);
-      newData.blockHistogram = cache.blockHistogram[blockSelected];
-      newData.blockSelected = blockSelected;
-      clearNonBlockData(newData);
-      setData(newData);
-      console.log("Cache found for block: " + blockSelected);
-      return true;
-    }
-    console.log("Cache not found for block: " + blockSelected);
-    return false;
-  }
-
-  function onChangeBlockData(incomingData) {
-    if (incomingData.lastModTime !== data.lastModTime) {
-      onTimer(incomingData);
-    } else {
-      if (incomingData.blockHistogram.length !== 0) {
-        //data.blockHistogram = null; //Saves time cloning as it is going to be overwritten
-        let newData = clone(data);
-        newData.blockHistogram = incomingData.blockHistogram;
-        newData.blockSelected = incomingData.blockSelected;
-        clearNonBlockData(newData);
-        setData(newData);
-        let newCache = clone(cache);
-        newCache.blockHistogram[incomingData.blockSelected] =
-          incomingData.blockHistogram;
-        setCache(newCache);
-      }
-    }
-  }
-
-  function clearNonBlockData(newData) {
-    newData.satVByteSelected = -1;
-    newData.txIndexSelected = -1;
-    newData.txIdSelected = "";
-    newData.txDependenciesInfo = null;
-    newData.tx = null;
-    newData.satVByteHistogram = [];
-    newData.txIgnoredData = null;
+    petitionTo("/miningQueueAPI/block/" + blockSelected, setData);
     setTxIdText("");
     setTxIdNotFound(false);
   }
 
   /**********************************************SatVByte Functions *********************************************/
   function onSatVByteSelected(satVByteSelected) {
-    if (!checkHistogramCache(satVByteSelected)) {
-      petitionTo(
-        "/miningQueueAPI/histogram/" +
-          data.blockSelected +
-          "/" +
-          satVByteSelected +
-          "/" +
-          data.lastModTime +
-          "/false",
-        onChangeHistogramData
-      );
-    }
-  }
-
-  function checkHistogramCache(satVByteSelected) {
-    const histogramIndex = getHistogramIndex(
-      data.blockSelected,
-      satVByteSelected
+    petitionTo(
+      "/miningQueueAPI/histogram/" +
+        data.blockSelected +
+        "/" +
+        satVByteSelected,
+      setData
     );
-    if (typeof cache.satVByteHistogram[histogramIndex] !== "undefined") {
-      let newData = clone(data);
-      newData.satVByteHistogram = cache.satVByteHistogram[histogramIndex];
-      newData.satVByteSelected = satVByteSelected;
-      clearNonBlockOrHistogramData(newData);
-      setData(newData);
-      console.log("Cache found for Block-SatVByte: " + histogramIndex);
-      return true;
-    }
-    console.log("Cache not found for Block-SatVByte: " + histogramIndex);
-    return false;
-  }
-
-  function getHistogramIndex(blockSelected, satVByteSelected) {
-    return blockSelected + "-" + satVByteSelected;
-  }
-
-  function onChangeHistogramData(incomingData) {
-    if (incomingData.lastModTime !== data.lastModTime) {
-      onTimer(incomingData);
-    } else {
-      if (incomingData.satVByteHistogram.length !== 0) {
-        let newData = clone(data);
-        newData.satVByteHistogram = incomingData.satVByteHistogram;
-        newData.satVByteSelected = incomingData.satVByteSelected;
-        clearNonBlockOrHistogramData(newData);
-        setData(newData);
-        let newCache = clone(cache);
-        const histogramIndex = getHistogramIndex(
-          data.blockSelected, // Be careful, use data not incomingData
-          incomingData.satVByteSelected
-        );
-        newCache.satVByteHistogram[histogramIndex] =
-          incomingData.satVByteHistogram;
-        setCache(newCache);
-      }
-    }
-  }
-
-  function clearNonBlockOrHistogramData(newData) {
-    newData.txIndexSelected = -1;
-    newData.txIdSelected = "";
-    newData.txDependenciesInfo = null;
-    newData.tx = null;
-    newData.txIgnoredData = null;
     setTxIdText("");
     setTxIdNotFound(false);
   }
+
   /**********************************************TxIndex Functions *********************************************/
   function onTxIndexSelected(txIndexSelected) {
-    const txSelector = getTxSelector(
-      data.blockSelected,
-      data.satVByteSelected,
-      txIndexSelected
-    );
-    if (!checkTxDataCacheByIndex(txSelector)) {
-      petitionTo(
-        "/miningQueueAPI/txIndex/" +
-          data.blockSelected +
-          "/" +
-          data.satVByteSelected +
-          "/" +
-          txIndexSelected +
-          "/" +
-          data.lastModTime +
-          "/false",
-        onChangeTxIndexData
-      );
-    }
-  }
-
-  function checkTxDataCacheByIndex(txSelector) {
-    const txData = cache.txDataByIndex[txSelector];
-    if (typeof txData !== "undefined") {
-      let newData = clone(data);
-      newData.txIndexSelected = txData.txIndexSelected;
-      newData.txIdSelected = txData.txIdSelected;
-      newData.txDependenciesInfo = txData.txDependenciesInfo;
-      newData.txIgnoredData = txData.txIgnoredData;
-      newData.tx = txData.tx;
-      setData(newData);
-      setTxIdText(txData.txIdSelected);
-      console.log("Cache found for tx: " + txSelector);
-      return true;
-    }
-    console.log("Cache not found for tx: " + txSelector);
-    return false;
-  }
-
-  function getTxSelector(blockSelected, satVByteSelected, txIndexSelected) {
-    return blockSelected + "-" + satVByteSelected + "-" + txIndexSelected;
-  }
-
-  function onChangeTxIndexData(incomingData) {
-    if (incomingData.lastModTime !== data.lastModTime) {
-      onTimer(incomingData);
-    } else {
-      if (incomingData.txDependenciesInfo !== null) {
-        let newData = clone(data);
-        newData.txIndexSelected = incomingData.txIndexSelected;
-        newData.txIdSelected = incomingData.txIdSelected;
-        newData.txDependenciesInfo = incomingData.txDependenciesInfo;
-        newData.txIgnoredData = incomingData.txIgnoredData;
-        newData.tx = incomingData.tx;
-        setData(newData);
+    petitionTo(
+      "/miningQueueAPI/txIndex/" +
+        data.blockSelected +
+        "/" +
+        data.satVByteSelected +
+        "/" +
+        txIndexSelected,
+      (incomingData) => {
+        setData(incomingData);
         setTxIdText(incomingData.txIdSelected);
-
-        let newCache = clone(cache);
-        const txData = {
-          txIndexSelected: incomingData.txIndexSelected,
-          txIdSelected: incomingData.txIdSelected,
-          txDependenciesInfo: incomingData.txDependenciesInfo,
-          txIgnoredData: incomingData.txIgnoredData,
-          tx: incomingData.tx,
-        };
-        const txSelector = getTxSelector(
-          data.blockSelected, // Be careful, use data not incomingData
-          data.satVByteSelected, // Be careful, use data not incomingData
-          incomingData.txIndexSelected
-        );
-        newCache.txDataByIndex[txSelector] = txData;
-        newCache.txDataById[incomingData.txIdSelected] = txData;
-        setCache(newCache);
       }
-    }
+    );
   }
 
   /*************************************************TxIdText Functions *********************************************/
@@ -385,39 +124,29 @@ export function MempoolGraph(props) {
   }
 
   function onTxSearchButton() {
-    petitionTo(
-      "/miningQueueAPI/tx/" +
-        txIdTextState +
-        "/" +
-        0 +
-        "/false",
-      (incomingData) => {
-        if (incomingData.txIdSelected === "") {
-          setTxIdNotFound(true);
-          setData(incomingData); //It will return basic mempool data if tx not found
-        } else {
-          setTxIdNotFound(false);
-          setData(incomingData);
-        }
+    petitionTo("/miningQueueAPI/tx/" + txIdTextState, (incomingData) => {
+      if (incomingData.txIdSelected === "") {
+        setTxIdNotFound(true);
+        setData(incomingData); //It will return basic mempool data if tx not found
+      } else {
+        setTxIdNotFound(false);
+        setData(incomingData);
       }
-    );
+    });
   }
 
   /*************************************************TxIdChanged Functions ********************************************/
   function onTxIdSelected(tId) {
-    petitionTo(
-      "/miningQueueAPI/tx/" + tId + "/" + 0 + "/false",
-      (incomingData) => {
-        if (incomingData.txIdSelected === "") {
-          setTxIdNotFound(true);
-          setData(incomingData); //It will return basic mempool data if tx not found
-        } else {
-          setTxIdNotFound(false);
-          setTxIdText(tId);
-          setData(incomingData);
-        }
+    petitionTo("/miningQueueAPI/tx/" + tId, (incomingData) => {
+      if (incomingData.txIdSelected === "") {
+        setTxIdNotFound(true);
+        setData(incomingData); //It will return basic mempool data if tx not found
+      } else {
+        setTxIdNotFound(false);
+        setTxIdText(tId);
+        setData(incomingData);
       }
-    );
+    });
   }
 
   function onSetLockMempool(lock) {
