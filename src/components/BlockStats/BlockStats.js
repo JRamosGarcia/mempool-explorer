@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { petitionTo } from "../../utils/utils";
-import { BlockStatsList } from "./BlockStatsList";
-import { BlockStatsEx } from "./BlockStatsEx";
 import "./BlockStats.css";
+import { BlockStatsEx } from "./BlockStatsEx";
+import { BlockStatsList } from "./BlockStatsList";
 
 export function BlockStats(props) {
   const { id } = useParams();
@@ -11,22 +11,40 @@ export function BlockStats(props) {
   const [igBlockList, setIgBlockList] = useState([]);
   const [igBlockEx, setIgBlockEx] = useState();
 
+  const [pageState, setPageState] = useState({ page: 0, size: 40});
+
   useEffect(() => {
     if (id === undefined) {
       petitionTo(
-        "/ignoringBlocksAPI/ignoringBlocks",
+        "/ignoringBlocksAPI/ignoringBlocks/" +
+          pageState.page +
+          "/" +
+          pageState.size,
         setIgBlockList
       );
     } else {
-      petitionTo(
-        "/ignoringBlocksAPI/ignoringBlock/" + id,
-        setIgBlockEx
-      );
+      petitionTo("/ignoringBlocksAPI/ignoringBlock/" + id, setIgBlockEx);
     }
-  }, [id]);
+  }, [id, pageState]);
+
+  function onNextPage() {
+    if (igBlockList.length === pageState.size) {
+      setPageState({ ...pageState, page: pageState.page + 1 });
+    }
+  }
+
+  function onPrevPage() {
+    setPageState({ ...pageState, page: Math.max(0, pageState.page - 1) });
+  }
 
   if (id === undefined) {
-    return <BlockStatsList igBlockList={igBlockList} />;
+    return (
+      <BlockStatsList
+        igBlockList={igBlockList}
+        onNextPage={onNextPage}
+        onPrevPage={onPrevPage}
+      />
+    );
   } else if (igBlockEx !== undefined) {
     return <BlockStatsEx igBlockEx={igBlockEx} />;
   } else return null;

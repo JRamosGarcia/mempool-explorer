@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 const clone = require("rfdc")();
 
 export function BlockStatsList(props) {
-  const { igBlockList } = props;
+  const { igBlockList, onNextPage, onPrevPage } = props;
 
   const igBList = clone(igBlockList);
 
@@ -46,6 +46,10 @@ export function BlockStatsList(props) {
           ))}
         </tbody>
       </table>
+      <div>
+        <button onClick={onPrevPage}>Prev</button>
+        <button onClick={onNextPage}>Next</button>
+      </div>
     </div>
   );
 }

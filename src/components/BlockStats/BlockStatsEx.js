@@ -4,7 +4,6 @@ import "./BlockStatsEx.css";
 
 export function BlockStatsEx(props) {
   const { igBlockEx } = props;
-
   return (
     <div>
       <table className="blockStatsEx">
