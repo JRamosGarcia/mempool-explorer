@@ -10,9 +10,10 @@ export function TxOutput(props) {
       <tbody>
         <tr>
           <td>#{index}</td>
-          {txOutput.addressIds.map((addr, i, a) => (
+          {txOutput.addressIds!==null && txOutput.addressIds.map((addr, i, a) => (
             <td>{`${addr} ${a.length - 1 === i ? "" : ", "}`}</td>
           ))}
+          {txOutput.addressIds===null && <td>Non Standard Output (no address)</td>}
           <td>{satsToBTC(txOutput.amount)} BTC</td>
         </tr>
       </tbody>
