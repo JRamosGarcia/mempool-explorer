@@ -45,6 +45,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://txmempool1:8080",
+  "proxy": "http://gateway:8080/txmempool",
   "devDependencies": {}
 }

@@ -7,7 +7,9 @@ export function getNumberWithOrdinal(n) {
 }
 
 export function petitionTo(petition, onFunction) {
-  petition = "http://mempoolexplorer.com"+petition;
+  //petition = "http://mempoolexplorer.com"+petition;
+  petition = "http://localhost:3001"+petition;
+
   json(petition)
     .then((incomingData) => {
       console.log("petition at " + petition);
