@@ -7,8 +7,12 @@ export function getNumberWithOrdinal(n) {
 }
 
 export function petitionTo(petition, onFunction) {
+  petition=process.env.REACT_APP_GATEWAY+petition;
+  //petition = "http://gateway:8080/txmempool"+petition;
   //petition = "http://mempoolexplorer.com"+petition;
-  petition = "http://localhost:3001"+petition;
+  //Use this option only when using proxy on package.json
+  //petition = "http://localhost:3001"+petition;
+  //"proxy": "http://gateway:8080/txmempool",
 
   json(petition)
     .then((incomingData) => {
